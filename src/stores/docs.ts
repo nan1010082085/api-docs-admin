@@ -9,6 +9,7 @@ export const useDocsStore = defineStore('docs', () => {
   const projects = ref<ProjectData[]>([])
   const activeProjectId = ref<string>('')
   const activeEnvIndex = ref<number>(0)
+  const customBaseUrl = ref<string>('')
   const searchQuery = ref('')
   const loading = ref(false)
   const error = ref<string | null>(null)
@@ -19,6 +20,13 @@ export const useDocsStore = defineStore('docs', () => {
   )
 
   const activeEnvironment = computed(() => {
+    // 自定义环境
+    if (activeEnvIndex.value === -1) {
+      return {
+        name: '自定义',
+        baseUrl: customBaseUrl.value,
+      }
+    }
     const envs = activeProject.value?.config.environments
     if (!envs || activeEnvIndex.value < 0 || activeEnvIndex.value >= envs.length) return null
     return envs[activeEnvIndex.value]
@@ -91,6 +99,7 @@ export const useDocsStore = defineStore('docs', () => {
     projects,
     activeProjectId,
     activeEnvIndex,
+    customBaseUrl,
     activeProject,
     activeEnvironment,
     searchQuery,

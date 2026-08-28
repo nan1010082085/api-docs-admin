@@ -16,6 +16,9 @@ public/specs/*.yaml
 public/specs/*.json
 public/specs/components/
 
+# 项目配置（包含实际服务器地址，不公开）
+src/config/projects.ts
+
 # TypeScript 构建缓存
 *.tsbuildinfo
 

@@ -1,0 +1,149 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body, #app {
+  height: 100%;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+}
+
+// Method 颜色
+.method-get    { color: #61affe; }
+.method-post   { color: #49cc90; }
+.method-put    { color: #fca130; }
+.method-patch  { color: #50e3c2; }
+.method-delete { color: #f93e3e; }
+.method-head   { color: #9012fe; }
+.method-options { color: #0d5aa7; }
+
+// Tag 颜色
+.tag-get    { background: #61affe; color: #fff; }
+.tag-post   { background: #49cc90; color: #fff; }
+.tag-put    { background: #fca130; color: #fff; }
+.tag-patch  { background: #50e3c2; color: #fff; }
+.tag-delete { background: #f93e3e; color: #fff; }
+
+// Schema 展示
+.schema-tree {
+  font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+  font-size: 13px;
+  line-height: 1.6;
+
+  .schema-key { color: #d73a49; }
+  .schema-type { color: #6f42c1; }
+  .schema-required { color: #f93e3e; font-size: 11px; }
+  .schema-desc { color: #6a737d; }
+}
+
+// Markdown 内容（marked 生成的 HTML）
+.markdown-body {
+  font-size: 14px;
+  line-height: 1.7;
+  color: #24292e;
+
+  h1, h2, h3, h4, h5, h6 {
+    margin-top: 16px;
+    margin-bottom: 8px;
+    font-weight: 600;
+    line-height: 1.25;
+  }
+
+  h1 { font-size: 1.5em; }
+  h2 { font-size: 1.3em; }
+  h3 { font-size: 1.1em; }
+
+  p {
+    margin-bottom: 8px;
+  }
+
+  ul, ol {
+    padding-left: 2em;
+    margin-bottom: 8px;
+
+    li {
+      margin-bottom: 4px;
+    }
+  }
+
+  code {
+    background: #f6f8fa;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-size: 13px;
+    font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+  }
+
+  pre {
+    background: #f6f8fa;
+    padding: 16px;
+    border-radius: 6px;
+    overflow-x: auto;
+    margin-bottom: 12px;
+
+    code {
+      background: none;
+      padding: 0;
+      font-size: 13px;
+      line-height: 1.5;
+    }
+  }
+
+  blockquote {
+    border-left: 4px solid #dfe2e5;
+    padding: 0 16px;
+    color: #6a737d;
+    margin-bottom: 8px;
+  }
+
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    margin-bottom: 12px;
+
+    th, td {
+      border: 1px solid #dfe2e5;
+      padding: 6px 13px;
+      text-align: left;
+    }
+
+    th {
+      background: #f6f8fa;
+      font-weight: 600;
+    }
+
+    tr:nth-child(2n) {
+      background: #f6f8fa;
+    }
+  }
+
+  a {
+    color: #0366d6;
+    text-decoration: none;
+
+    &:hover {
+      text-decoration: underline;
+    }
+  }
+
+  hr {
+    border: none;
+    border-top: 1px solid #e1e4e8;
+    margin: 16px 0;
+  }
+
+  strong {
+    font-weight: 600;
+  }
+
+  img {
+    max-width: 100%;
+  }
+}
+
+// 响应状态码颜色
+.status-2xx { color: #49cc90; }
+.status-3xx { color: #fca130; }
+.status-4xx { color: #f93e3e; }
+.status-5xx { color: #f93e3e; }

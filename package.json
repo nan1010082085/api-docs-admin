@@ -1,0 +1,32 @@
+{
+  "name": "@schema-platform/api-docs",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "bundle": "node scripts/bundle-spec.mjs",
+    "dev": "pnpm bundle && vite",
+    "build": "pnpm bundle && vue-tsc -b && vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@element-plus/icons-vue": "^2.3.1",
+    "axios": "^1.18.1",
+    "element-plus": "2.14.2",
+    "highlight.js": "^11.12.0",
+    "js-yaml": "^4.1.0",
+    "marked": "^18.0.11",
+    "pinia": "^4.0.3",
+    "vue": "^3.5.42",
+    "vue-router": "^5.3.0"
+  },
+  "devDependencies": {
+    "@types/js-yaml": "^4.0.9",
+    "@types/node": "^26.4.0",
+    "@vitejs/plugin-vue": "^6.0.8",
+    "sass": "^1.103.1",
+    "typescript": "~5.7.3",
+    "vite": "^8.2.2",
+    "vue-tsc": "^3.3.11"
+  }
+}

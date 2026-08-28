@@ -2,96 +2,119 @@
   <div class="endpoint-detail">
     <!-- 标题行 -->
     <div class="detail-header">
-      <div class="method-path">
-        <MethodBadge :method="endpoint.method" />
-        <code class="path">{{ endpoint.path }}</code>
+      <div class="header-top">
+        <div class="method-path">
+          <MethodBadge :method="endpoint.method" />
+          <code class="path">{{ endpoint.path }}</code>
+        </div>
+        <div class="view-toggle">
+          <el-tooltip content="分栏视图" placement="top">
+            <el-button
+              :type="viewMode === 'split' ? 'primary' : 'default'"
+              :icon="Grid"
+              circle
+              size="small"
+              @click="viewMode = 'split'"
+            />
+          </el-tooltip>
+          <el-tooltip content="测试视图" placement="top">
+            <el-button
+              :type="viewMode === 'test' ? 'primary' : 'default'"
+              :icon="Promotion"
+              circle
+              size="small"
+              @click="viewMode = 'test'"
+            />
+          </el-tooltip>
+        </div>
       </div>
       <p v-if="endpoint.summary" class="summary">{{ endpoint.summary }}</p>
       <div v-if="endpoint.description" class="description markdown-body" v-html="renderMarkdown(endpoint.description)" />
       <el-tag v-if="endpoint.deprecated" type="danger" size="small">已废弃</el-tag>
     </div>
 
-    <!-- 左右分栏 -->
-    <div class="detail-grid" :class="{ collapsed: leftCollapsed }">
-      <!-- 左侧：参数 -->
-      <div class="detail-left">
-        <div v-if="leftCollapsed" class="collapse-bar" @click="leftCollapsed = false">
-          <el-icon><DArrowRight /></el-icon>
-          <span>展开</span>
+    <!-- 分栏视图 -->
+    <div v-if="viewMode === 'split'" class="detail-grid">
+      <div class="detail-card">
+        <div class="card-header">
+          <span>请求参数</span>
         </div>
-        <div v-else class="detail-card">
-          <div class="card-header">
-            <span>请求参数</span>
-            <el-icon class="collapse-btn" @click.stop="leftCollapsed = true"><DArrowLeft /></el-icon>
-          </div>
-          <div class="card-body">
-            <el-tabs v-model="activeTab" class="detail-tabs">
-              <el-tab-pane label="请求参数" name="params">
-                <ParamTable v-if="pathParams.length" title="路径参数" :params="pathParams" />
-                <ParamTable v-if="queryParams.length" title="查询参数" :params="queryParams" />
-                <ParamTable v-if="headerParams.length" title="请求头" :params="headerParams" />
-                <el-empty v-if="!pathParams.length && !queryParams.length && !headerParams.length" description="无参数" :image-size="48" />
-              </el-tab-pane>
+        <div class="card-body">
+          <el-tabs v-model="activeTab" class="detail-tabs">
+            <el-tab-pane label="请求参数" name="params">
+              <ParamTable v-if="pathParams.length" title="路径参数" :params="pathParams" />
+              <ParamTable v-if="queryParams.length" title="查询参数" :params="queryParams" />
+              <ParamTable v-if="headerParams.length" title="请求头" :params="headerParams" />
+              <el-empty v-if="!pathParams.length && !queryParams.length && !headerParams.length" description="无参数" :image-size="48" />
+            </el-tab-pane>
 
-              <el-tab-pane label="请求体" name="body">
-                <div v-if="endpoint.requestBody" class="body-section">
-                  <div v-if="endpoint.requestBody.description" class="markdown-body" v-html="renderMarkdown(endpoint.requestBody.description)" />
-                  <div v-for="(media, mediaType) in endpoint.requestBody.content" :key="mediaType" class="media-section">
-                    <el-tag size="small" type="info">{{ mediaType }}</el-tag>
-                    <SchemaViewer v-if="media.schema" :schema="media.schema" />
-                    <div v-if="media.example" class="example-block">
-                      <h5>示例</h5>
-                      <pre><code>{{ formatJson(media.example) }}</code></pre>
-                    </div>
+            <el-tab-pane label="请求体" name="body">
+              <div v-if="endpoint.requestBody" class="body-section">
+                <div v-if="endpoint.requestBody.description" class="markdown-body" v-html="renderMarkdown(endpoint.requestBody.description)" />
+                <div v-for="(media, mediaType) in endpoint.requestBody.content" :key="mediaType" class="media-section">
+                  <el-tag size="small" type="info">{{ mediaType }}</el-tag>
+                  <SchemaViewer v-if="media.schema" :schema="media.schema" />
+                  <div v-if="media.example" class="example-block">
+                    <h5>示例</h5>
+                    <pre><code>{{ formatJson(media.example) }}</code></pre>
                   </div>
                 </div>
-                <el-empty v-else description="无请求体" :image-size="48" />
-              </el-tab-pane>
+              </div>
+              <el-empty v-else description="无请求体" :image-size="48" />
+            </el-tab-pane>
 
-              <el-tab-pane label="响应" name="responses">
-                <div v-if="endpoint.responses && Object.keys(endpoint.responses).length">
-                  <div v-for="(resp, statusCode) in endpoint.responses" :key="statusCode" class="response-section">
-                    <h4>
-                      <span :class="statusClass(statusCode)">{{ statusCode }}</span>
-                      <span v-if="resp.description" class="resp-desc">{{ resp.description }}</span>
-                    </h4>
-                    <div v-if="resp.content">
-                      <div v-for="(media, mediaType) in resp.content" :key="mediaType" class="media-section">
-                        <el-tag size="small" type="info">{{ mediaType }}</el-tag>
-                        <SchemaViewer v-if="media.schema" :schema="media.schema" />
-                        <div v-if="media.example" class="example-block">
-                          <h5>示例</h5>
-                          <pre><code>{{ formatJson(media.example) }}</code></pre>
-                        </div>
+            <el-tab-pane label="响应" name="responses">
+              <div v-if="endpoint.responses && Object.keys(endpoint.responses).length">
+                <div v-for="(resp, statusCode) in endpoint.responses" :key="statusCode" class="response-section">
+                  <h4>
+                    <span :class="statusClass(statusCode)">{{ statusCode }}</span>
+                    <span v-if="resp.description" class="resp-desc">{{ resp.description }}</span>
+                  </h4>
+                  <div v-if="resp.content">
+                    <div v-for="(media, mediaType) in resp.content" :key="mediaType" class="media-section">
+                      <el-tag size="small" type="info">{{ mediaType }}</el-tag>
+                      <SchemaViewer v-if="media.schema" :schema="media.schema" />
+                      <div v-if="media.example" class="example-block">
+                        <h5>示例</h5>
+                        <pre><code>{{ formatJson(media.example) }}</code></pre>
                       </div>
                     </div>
                   </div>
                 </div>
-                <el-empty v-else description="无响应定义" :image-size="48" />
-              </el-tab-pane>
+              </div>
+              <el-empty v-else description="无响应定义" :image-size="48" />
+            </el-tab-pane>
 
-              <el-tab-pane v-if="endpoint.security?.length" label="认证" name="auth">
-                <p class="auth-info">此接口需要认证。支持：</p>
-                <ul>
-                  <li v-for="(_, idx) in endpoint.security" :key="idx">
-                    <el-tag size="small">Bearer Token</el-tag> 或 <el-tag size="small">API Key</el-tag>
-                  </li>
-                </ul>
-              </el-tab-pane>
-            </el-tabs>
-          </div>
+            <el-tab-pane v-if="endpoint.security?.length" label="认证" name="auth">
+              <p class="auth-info">此接口需要认证。支持：</p>
+              <ul>
+                <li v-for="(_, idx) in endpoint.security" :key="idx">
+                  <el-tag size="small">Bearer Token</el-tag> 或 <el-tag size="small">API Key</el-tag>
+                </li>
+              </ul>
+            </el-tab-pane>
+          </el-tabs>
         </div>
       </div>
 
-      <!-- 右侧：在线测试 -->
-      <div class="detail-right">
-        <div class="detail-card">
-          <div class="card-header">
-            <span>在线测试</span>
-          </div>
-          <div class="card-body">
-            <TryItOut :endpoint="endpoint" />
-          </div>
+      <div class="detail-card">
+        <div class="card-header">
+          <span>在线测试</span>
+        </div>
+        <div class="card-body">
+          <TryItOut :endpoint="endpoint" />
+        </div>
+      </div>
+    </div>
+
+    <!-- 测试视图（全宽） -->
+    <div v-else class="detail-full">
+      <div class="detail-card">
+        <div class="card-header">
+          <span>在线测试</span>
+        </div>
+        <div class="card-body">
+          <TryItOut :endpoint="endpoint" />
         </div>
       </div>
     </div>
@@ -100,7 +123,7 @@
 
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-import { DArrowLeft, DArrowRight } from '@element-plus/icons-vue'
+import { Grid, Promotion } from '@element-plus/icons-vue'
 import type { ApiEndpoint } from '@/types'
 import { renderMarkdown } from '@/utils/markdown'
 import MethodBadge from './MethodBadge.vue'
@@ -113,7 +136,7 @@ const props = defineProps<{
 }>()
 
 const activeTab = ref('params')
-const leftCollapsed = ref(false)
+const viewMode = ref<'split' | 'test'>('split')
 
 const pathParams = computed(() =>
   (props.endpoint.parameters ?? []).filter((p) => p.in === 'path'),
@@ -148,17 +171,28 @@ function formatJson(val: unknown): string {
   margin-bottom: 20px;
 }
 
+.header-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
 .method-path {
   display: flex;
   align-items: center;
   gap: 12px;
-  margin-bottom: 8px;
+}
 
-  .path {
-    font-size: 18px;
-    font-family: 'SFMono-Regular', Consolas, monospace;
-    color: #303133;
-  }
+.path {
+  font-size: 18px;
+  font-family: 'SFMono-Regular', Consolas, monospace;
+  color: #303133;
+}
+
+.view-toggle {
+  display: flex;
+  gap: 4px;
 }
 
 .summary {
@@ -173,59 +207,17 @@ function formatJson(val: unknown): string {
   margin-bottom: 8px;
 }
 
-// 栅格布局
+// 分栏布局
 .detail-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 16px;
   align-items: stretch;
-  transition: grid-template-columns 0.3s ease;
-
-  &.collapsed {
-    grid-template-columns: 40px 1fr;
-  }
 }
 
-.detail-left {
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-}
-
-.detail-right {
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-}
-
-// 收起状态的窄条
-.collapse-bar {
-  background: #fff;
-  border: 1px solid #e4e7ed;
-  border-radius: 8px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  padding: 16px 0;
-  cursor: pointer;
-  height: 100%;
-  min-height: 200px;
-  color: #909399;
-  font-size: 12px;
-  writing-mode: vertical-rl;
-
-  &:hover {
-    background: #ecf5ff;
-    color: #409eff;
-    border-color: #b3d8ff;
-  }
-
-  .el-icon {
-    font-size: 16px;
-    writing-mode: horizontal-tb;
-  }
+// 全宽布局
+.detail-full {
+  width: 100%;
 }
 
 // 卡片
@@ -235,7 +227,6 @@ function formatJson(val: unknown): string {
   border-radius: 8px;
   display: flex;
   flex-direction: column;
-  height: 100%;
   overflow: hidden;
 }
 
@@ -250,16 +241,6 @@ function formatJson(val: unknown): string {
   font-size: 14px;
   color: #303133;
   flex-shrink: 0;
-}
-
-.collapse-btn {
-  cursor: pointer;
-  color: #909399;
-  font-size: 16px;
-
-  &:hover {
-    color: #409eff;
-  }
 }
 
 .card-body {

@@ -5,19 +5,9 @@
       <span>在线测试</span>
     </div>
 
-    <!-- 环境 + URL + 发送 -->
+    <!-- URL + 发送 -->
     <div class="try-url-bar">
-      <el-select v-model="envIndex" placeholder="环境" class="env-select">
-        <el-option
-          v-for="(env, idx) in environments"
-          :key="idx"
-          :label="env.name"
-          :value="idx"
-        />
-        <el-option label="自定义" :value="-1" />
-      </el-select>
-
-      <el-input v-model="baseUrl" placeholder="请求前缀" class="base-url-input">
+      <el-input v-model="baseUrl" placeholder="请求前缀（在顶部环境中设置）" class="base-url-input">
         <template #prepend>
           <span class="method-text" :class="`method-${endpoint.method}`">{{ endpoint.method.toUpperCase() }}</span>
         </template>
@@ -186,29 +176,30 @@
 <script setup lang="ts">
 import { ref, reactive, computed, watch } from 'vue'
 import { Delete, Promotion } from '@element-plus/icons-vue'
+import { useDocsStore } from '@/stores/docs'
 import type { ApiEndpoint, Environment, JsonSchema, TryResponse } from '@/types'
 
 const props = defineProps<{
   endpoint: ApiEndpoint
-  environments?: Environment[]
 }>()
 
-// ── 环境 ──
-const envIndex = ref(props.environments?.length ? 0 : -1)
-const baseUrl = ref(props.environments?.[0]?.baseUrl ?? '')
+const store = useDocsStore()
 
-watch(envIndex, (idx) => {
-  if (idx >= 0 && props.environments?.[idx]) {
-    baseUrl.value = props.environments[idx].baseUrl
-    const envHeaders = props.environments[idx].headers ?? {}
+// ── 环境（使用全局设置） ──
+const baseUrl = ref(store.activeEnvironment?.baseUrl ?? '')
+
+watch(() => store.activeEnvironment, (env) => {
+  if (env) {
+    baseUrl.value = env.baseUrl
+    const envHeaders = env.headers ?? {}
     for (const [k, v] of Object.entries(envHeaders)) {
       const existing = headerRows.value.find(([name]) => name === k)
       if (existing) existing[1] = v
       else headerRows.value.push([k, v])
     }
-    if (props.environments[idx].cookie) cookieValue.value = props.environments[idx].cookie
+    if (env.cookie) cookieValue.value = env.cookie
   }
-})
+}, { immediate: true })
 
 // ── 参数 ──
 const pathParams = computed(() => (props.endpoint.parameters ?? []).filter((p) => p.in === 'path'))
@@ -430,6 +421,12 @@ function formatSize(bytes: number) {
   gap: 8px;
   align-items: stretch;
   margin-bottom: 8px;
+
+  :deep(.el-input__wrapper),
+  :deep(.el-select .el-input__wrapper),
+  :deep(.el-input-group__prepend) {
+    height: 40px;
+  }
 }
 
 .env-select {
@@ -530,6 +527,7 @@ function formatSize(bytes: number) {
 
   :deep(.el-input__wrapper) {
     box-shadow: 0 0 0 1px #dcdfe6 inset;
+    height: 36px;
   }
 }
 

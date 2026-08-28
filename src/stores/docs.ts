@@ -8,6 +8,7 @@ export const useDocsStore = defineStore('docs', () => {
   // ── State ──
   const projects = ref<ProjectData[]>([])
   const activeProjectId = ref<string>('')
+  const activeEnvIndex = ref<number>(0)
   const searchQuery = ref('')
   const loading = ref(false)
   const error = ref<string | null>(null)
@@ -16,6 +17,12 @@ export const useDocsStore = defineStore('docs', () => {
   const activeProject = computed(() =>
     projects.value.find((p) => p.config.id === activeProjectId.value),
   )
+
+  const activeEnvironment = computed(() => {
+    const envs = activeProject.value?.config.environments
+    if (!envs || activeEnvIndex.value < 0 || activeEnvIndex.value >= envs.length) return null
+    return envs[activeEnvIndex.value]
+  })
 
   const filteredGroups = computed(() => {
     const project = activeProject.value
@@ -83,7 +90,9 @@ export const useDocsStore = defineStore('docs', () => {
   return {
     projects,
     activeProjectId,
+    activeEnvIndex,
     activeProject,
+    activeEnvironment,
     searchQuery,
     filteredGroups,
     totalEndpoints,

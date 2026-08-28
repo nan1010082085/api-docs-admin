@@ -15,6 +15,19 @@
           :value="p.config.id"
         />
       </el-select>
+      <el-select
+        v-model="store.activeEnvIndex"
+        class="env-select"
+        placeholder="测试环境"
+      >
+        <el-option
+          v-for="(env, idx) in environments"
+          :key="idx"
+          :label="env.name"
+          :value="idx"
+        />
+        <el-option label="自定义" :value="-1" />
+      </el-select>
       <el-tag v-if="store.totalEndpoints" type="info" size="small">
         {{ store.totalEndpoints }} 个接口
       </el-tag>
@@ -34,13 +47,15 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { Download } from '@element-plus/icons-vue'
 import { useDocsStore } from '@/stores/docs'
 import { downloadOpenApiJson } from '@/utils/export'
 
 const store = useDocsStore()
 const search = ref('')
+
+const environments = computed(() => store.activeProject?.config.environments ?? [])
 
 let timer: ReturnType<typeof setTimeout> | null = null
 function onSearch(val: string) {
@@ -69,7 +84,7 @@ function handleExport() {
 .header-left {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 12px;
 }
 
 .logo {
@@ -80,7 +95,11 @@ function handleExport() {
 }
 
 .project-select {
-  width: 220px;
+  width: 200px;
+}
+
+.env-select {
+  width: 140px;
 }
 
 .header-right {

@@ -3,8 +3,12 @@ import type { ProjectConfig } from '@/types'
 /**
  * 项目配置列表
  *
- * environments: 测试环境列表，可配置 baseUrl、认证、headers、cookie
- * baseUrl 为空字符串时走同源 Vite 代理（/api → localhost:3001，仅 schema-platform）
+ * 添加新项目：在数组中增加一项即可。
+ * specUrl 支持：
+ *   - 本地文件：'specs/xxx.json'（放在 public/specs/ 目录下）
+ *   - 远程 URL：'http://server:port/openapi.json'
+ *
+ * environments: 测试环境列表，每个环境可配置 baseUrl、默认 headers、cookie
  */
 const projects: ProjectConfig[] = [
   {
@@ -13,9 +17,8 @@ const projects: ProjectConfig[] = [
     specUrl: 'specs/schema-platform.yaml',
     description: '可视化表单设计器后端 API',
     environments: [
-      { name: '本地代理', baseUrl: '', authType: 'bearer' },
-      { name: '本地直连', baseUrl: 'http://localhost:3001', authType: 'bearer' },
-      { name: '线上环境', baseUrl: 'https://pyflow.icu/schema-platform', authType: 'bearer' },
+      { name: '本地开发', baseUrl: 'http://localhost:3001' },
+      { name: '线上环境', baseUrl: 'https://pyflow.icu/schema-platform' },
     ],
   },
   {
@@ -24,8 +27,8 @@ const projects: ProjectConfig[] = [
     specUrl: 'specs/salary-flow.json',
     description: '工资流程管理系统 API',
     environments: [
-      { name: '本地开发', baseUrl: 'http://localhost:8000', authType: 'bearer' },
-      { name: '线上环境', baseUrl: 'https://pyflow.icu/salary', authType: 'bearer' },
+      { name: '本地开发', baseUrl: 'http://localhost:8000' },
+      { name: '线上环境', baseUrl: 'https://pyflow.icu/salary' },
     ],
   },
   {
@@ -34,38 +37,38 @@ const projects: ProjectConfig[] = [
     specUrl: 'specs/amber-of-time.json',
     description: 'AI 网关，兼容 OpenAI API 格式',
     environments: [
-      { name: '本地开发', baseUrl: 'http://localhost:14091', authType: 'bearer' },
-      { name: '线上环境', baseUrl: 'https://pyflow.icu/amber-of-time', authType: 'bearer' },
+      { name: '本地开发', baseUrl: 'http://localhost:14091' },
+      { name: '线上环境', baseUrl: 'https://pyflow.icu/amber-of-time' },
     ],
   },
   {
     id: 'inspiration',
     name: '灵感ing',
     specUrl: 'specs/inspiration.json',
-    description: '灵感卡片应用（服务未运行）',
+    description: '灵感卡片应用（Docker 容器）',
     environments: [
-      { name: '本地开发', baseUrl: 'http://localhost:19071', authType: 'bearer' },
-      { name: '线上环境', baseUrl: 'https://pyflow.icu/inspiration', authType: 'bearer' },
+      { name: '本地开发', baseUrl: 'http://localhost:19071/inspiration/api' },
+      { name: '线上环境', baseUrl: 'https://pyflow.icu/inspiration/api' },
     ],
   },
   {
     id: 'matrix-app',
     name: 'Matrix Studio',
     specUrl: 'specs/matrix-app.json',
-    description: 'Matrix Studio 应用（服务未运行）',
+    description: '矩阵 Matrix Studio AI 应用',
     environments: [
-      { name: '本地开发', baseUrl: 'http://localhost:5001', authType: 'bearer' },
-      { name: '线上环境', baseUrl: 'https://pyflow.icu/matrix-app', authType: 'bearer' },
+      { name: '本地开发', baseUrl: 'http://localhost:8001' },
+      { name: '线上环境', baseUrl: 'https://pyflow.icu/matrix-app/api' },
     ],
   },
   {
     id: 'stock-analysis',
     name: 'Stock Analysis',
     specUrl: 'specs/stock-analysis.json',
-    description: '股票分析应用（服务异常）',
+    description: '股票/期货四维分析盯盘工具',
     environments: [
-      { name: '本地开发', baseUrl: 'http://localhost:5080', authType: 'bearer' },
-      { name: '线上环境', baseUrl: 'https://pyflow.icu/stock-analysis', authType: 'bearer' },
+      { name: '本地开发', baseUrl: 'http://localhost:5080' },
+      { name: '线上环境', baseUrl: 'https://pyflow.icu/stock-analysis' },
     ],
   },
 ]

@@ -4,7 +4,7 @@
       <el-icon><Promotion /></el-icon>
       <span>在线测试</span>
       <div class="try-actions">
-        <el-button size="small" :icon="DocumentCopy" @click="copyCurl">复制 cURL</el-button>
+        <el-button :icon="DocumentCopy" @click="copyCurl">复制 cURL</el-button>
       </div>
     </div>
 
@@ -48,7 +48,7 @@
                 <span v-if="row.required" class="required">*</span>
               </span>
               <div class="col-value">
-                <el-input v-model="row.value" :placeholder="row.type || 'string'" size="small" />
+                <el-input v-model="row.value" :placeholder="row.type || 'string'" />
               </div>
               <span class="col-type">{{ row.type }}</span>
               <span class="col-desc">{{ row.description }}</span>
@@ -59,7 +59,7 @@
         <div class="param-block">
           <div class="param-block-title">
             <span>Query 参数</span>
-            <el-button size="small" text type="primary" @click="addQueryRow">+ 添加</el-button>
+            <el-button text type="primary" @click="addQueryRow">+ 添加</el-button>
           </div>
           <div class="params-table query-table">
             <div class="params-header">
@@ -80,7 +80,6 @@
                   v-if="!row.fromSpec"
                   v-model="row.name"
                   placeholder="name"
-                  size="small"
                 />
                 <template v-else>
                   {{ row.name }}
@@ -88,7 +87,7 @@
                 </template>
               </div>
               <div class="col-value">
-                <el-input v-model="row.value" :placeholder="row.type || 'value'" size="small" />
+                <el-input v-model="row.value" :placeholder="row.type || 'value'" />
               </div>
               <span class="col-type">{{ row.type || 'string' }}</span>
               <span class="col-desc">{{ row.description }}</span>
@@ -97,7 +96,6 @@
                   v-if="!row.fromSpec || !row.required"
                   :icon="Delete"
                   circle
-                  size="small"
                   @click="queryRows.splice(idx, 1)"
                 />
               </span>
@@ -114,27 +112,27 @@
         </template>
 
         <div v-if="!supportsBody && !hasRequestBody" class="body-none">
-          <el-radio-group v-model="bodyNone" size="small">
+          <el-radio-group v-model="bodyNone" class="mode-radios">
             <el-radio-button :value="true">none</el-radio-button>
           </el-radio-group>
           <p class="field-hint">当前方法默认无请求体。如需自定义可切换 Content-Type 后编辑。</p>
-          <el-button size="small" @click="forceEnableBody">启用 Body</el-button>
+          <el-button @click="forceEnableBody">启用 Body</el-button>
         </div>
 
         <template v-else>
           <div class="body-toolbar">
-            <el-radio-group v-model="bodyMode" size="small">
+            <el-radio-group v-model="bodyMode" class="mode-radios">
               <el-radio-button value="form" :disabled="!canUseFormMode">表单</el-radio-button>
               <el-radio-button value="raw">JSON / Raw</el-radio-button>
               <el-radio-button value="formdata">form-data</el-radio-button>
             </el-radio-group>
-            <el-select v-model="selectedContentType" size="small" class="content-type-select">
+            <el-select v-model="selectedContentType" class="content-type-select">
               <el-option label="application/json" value="application/json" />
               <el-option label="multipart/form-data" value="multipart/form-data" />
               <el-option label="application/x-www-form-urlencoded" value="application/x-www-form-urlencoded" />
               <el-option label="text/plain" value="text/plain" />
             </el-select>
-            <el-button size="small" @click="fillExample">填入示例</el-button>
+            <el-button @click="fillExample">填入示例</el-button>
           </div>
 
           <!-- 表单模式：按 schema properties 逐项录入 -->
@@ -169,7 +167,6 @@
                   v-else
                   v-model="field.value"
                   :placeholder="field.placeholder"
-                  size="small"
                   :type="field.type === 'object' || field.type === 'array' ? 'textarea' : 'text'"
                   :rows="field.type === 'object' || field.type === 'array' ? 3 : 1"
                 />
@@ -189,33 +186,84 @@
             class="body-editor"
           />
 
-          <!-- form-data -->
+          <!-- form-data：支持文本 / 文件 / 图片预览，按 OpenAPI schema 预填 -->
           <div v-else class="form-data-section">
-            <div v-for="(field, idx) in formDataFields" :key="idx" class="form-data-row">
-              <el-input v-model="field.name" placeholder="字段名" size="small" class="field-name" />
-              <el-select v-model="field.type" size="small" style="width: 80px">
-                <el-option label="文本" value="text" />
-                <el-option label="文件" value="file" />
-              </el-select>
-              <el-input
-                v-if="field.type === 'text'"
-                v-model="field.value"
-                placeholder="值"
-                size="small"
-                class="field-value"
-              />
-              <el-upload
-                v-else
-                :auto-upload="false"
-                :show-file-list="false"
-                :on-change="(f: UploadFile) => handleFileChange(idx, f)"
-                class="file-upload"
-              >
-                <el-button size="small">{{ field.fileName || '选择文件' }}</el-button>
-              </el-upload>
-              <el-button :icon="Delete" circle size="small" @click="formDataFields.splice(idx, 1)" />
+            <div class="params-table formdata-table">
+              <div class="params-header">
+                <span class="col-check" />
+                <span class="col-name">字段名</span>
+                <span class="col-kind">类型</span>
+                <span class="col-value">字段值</span>
+                <span class="col-desc">说明</span>
+                <span class="col-action" />
+              </div>
+              <div v-if="!formDataFields.length" class="params-empty">
+                暂无字段，可点击添加；binary 字段会自动识别为文件
+              </div>
+              <div v-for="(field, idx) in formDataFields" :key="field.id" class="params-row formdata-row">
+                <span class="col-check">
+                  <el-checkbox v-model="field.enabled" :disabled="field.required && field.fromSpec" />
+                </span>
+                <div class="col-name">
+                  <el-input
+                    v-if="!field.fromSpec"
+                    v-model="field.name"
+                    placeholder="name"
+                  />
+                  <template v-else>
+                    {{ field.name }}
+                    <span v-if="field.required" class="required">*</span>
+                  </template>
+                </div>
+                <div class="col-kind">
+                  <el-select v-model="field.type" class="kind-select" @change="onFormDataTypeChange(field)">
+                    <el-option label="文本" value="text" />
+                    <el-option label="文件" value="file" />
+                  </el-select>
+                </div>
+                <div class="col-value">
+                  <el-input
+                    v-if="field.type === 'text'"
+                    v-model="field.value"
+                    placeholder="value"
+                  />
+                  <div v-else class="file-field">
+                    <el-upload
+                      :auto-upload="false"
+                      :show-file-list="false"
+                      :accept="field.accept"
+                      :on-change="(f: UploadFile) => handleFileChange(idx, f)"
+                    >
+                      <el-button>{{ field.fileName || (field.accept.startsWith('image') ? '选择图片' : '选择文件') }}</el-button>
+                    </el-upload>
+                    <div v-if="field.file" class="file-meta">
+                      <img
+                        v-if="field.previewUrl"
+                        :src="field.previewUrl"
+                        alt="preview"
+                        class="file-preview"
+                      />
+                      <div class="file-info">
+                        <span class="file-name" :title="field.fileName">{{ field.fileName }}</span>
+                        <span class="file-size">{{ formatSize(field.file.size) }}</span>
+                      </div>
+                      <el-button text type="danger" @click="clearFormDataFile(idx)">清除</el-button>
+                    </div>
+                  </div>
+                </div>
+                <span class="col-desc">{{ field.description }}</span>
+                <span class="col-action">
+                  <el-button
+                    v-if="!field.fromSpec || !field.required"
+                    :icon="Delete"
+                    circle
+                    @click="removeFormDataField(idx)"
+                  />
+                </span>
+              </div>
             </div>
-            <el-button class="add-btn" size="small" @click="addFormDataField">+ 添加字段</el-button>
+            <el-button class="add-btn" @click="addFormDataField">+ 添加字段</el-button>
+            <p class="field-hint">multipart 发送时由浏览器自动带 boundary，不会手写 Content-Type。</p>
           </div>
 
           <p v-if="bodyError" class="field-error">{{ bodyError }}</p>
@@ -227,11 +275,11 @@
         <div class="kv-table">
           <div v-for="(row, idx) in headerRows" :key="idx" class="kv-row">
             <el-checkbox v-model="row.enabled" />
-            <el-input v-model="row.name" placeholder="Header Name" size="small" />
-            <el-input v-model="row.value" placeholder="Value" size="small" />
-            <el-button :icon="Delete" circle size="small" @click="headerRows.splice(idx, 1)" />
+            <el-input v-model="row.name" placeholder="Header Name" />
+            <el-input v-model="row.value" placeholder="Value" />
+            <el-button :icon="Delete" circle @click="headerRows.splice(idx, 1)" />
           </div>
-          <el-button class="add-btn" size="small" @click="headerRows.push({ enabled: true, name: '', value: '' })">
+          <el-button class="add-btn" @click="headerRows.push({ enabled: true, name: '', value: '' })">
             + 添加请求头
           </el-button>
         </div>
@@ -317,18 +365,27 @@ interface BodyField {
   schema?: JsonSchema
 }
 
-interface HeaderRow {
-  enabled: boolean
-  name: string
-  value: string
-}
-
 interface FormDataField {
+  id: string
+  enabled: boolean
   name: string
   type: 'text' | 'file'
   value: string
   fileName: string
   file: File | null
+  /** 图片预览 ObjectURL */
+  previewUrl: string | null
+  /** input accept，如 image/* */
+  accept: string
+  required: boolean
+  fromSpec: boolean
+  description: string
+}
+
+interface HeaderRow {
+  enabled: boolean
+  name: string
+  value: string
 }
 
 let rowSeq = 0

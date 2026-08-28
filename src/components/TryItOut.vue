@@ -336,7 +336,10 @@
               @change="saveTokenFieldConfig(tokenFieldConfig)"
             />
           </div>
-          <pre class="response-body"><code class="hljs" v-html="responseBodyHighlighted"></code></pre>
+          <pre class="response-body">
+            <code v-if="responseBodyHighlighted" class="hljs" v-html="responseBodyHighlighted"></code>
+            <code v-else>{{ responseBodyFormatted }}</code>
+          </pre>
         </el-tab-pane>
         <el-tab-pane label="响应头" name="headers">
           <div v-for="(val, key) in response.headers" :key="key" class="resp-header-item">
@@ -381,6 +384,7 @@ import { autoExtractToken, extractTokenFromBody } from '@/utils/auth'
 import { highlightCode, langFromContentType, tryFormatJson } from '@/utils/highlight'
 import { getHistory, addHistory, clearHistory } from '@/utils/history'
 import type { HistoryEntry } from '@/utils/history'
+import { performFetch } from '@/utils/request'
 import type { ApiEndpoint, ApiParameter, JsonSchema, TryResponse } from '@/types'
 
 const props = defineProps<{
@@ -1064,34 +1068,17 @@ async function sendRequest() {
   }
 
   sending.value = true
-  const startTime = performance.now()
   try {
-    const fetchOptions: RequestInit = {
+    response.value = await performFetch({
       method: props.endpoint.method.toUpperCase(),
+      url: requestUrl(),
       headers,
-      mode: 'cors',
+      body,
       credentials: withCredentials.value ? 'include' : 'same-origin',
-    }
-    if (body !== undefined) fetchOptions.body = body
-
-    const resp = await fetch(requestUrl(), fetchOptions)
-    const endTime = performance.now()
-    const text = await resp.text()
-    const respHeaders: Record<string, string> = {}
-    resp.headers.forEach((v, k) => {
-      respHeaders[k] = v
     })
-    response.value = {
-      status: resp.status,
-      statusText: resp.statusText,
-      headers: respHeaders,
-      body: text,
-      time: Math.round(endTime - startTime),
-      size: new TextEncoder().encode(text).length,
-    }
 
-    // 登录成功时尝试回写 token
-    tryAutoSaveToken(text)
+    // 登录成功时尝试回写 token（仅 2xx）
+    tryAutoSaveToken(response.value.body, response.value.status)
 
     // 记录请求历史
     addHistory({
@@ -1100,21 +1087,22 @@ async function sendRequest() {
       method: props.endpoint.method.toUpperCase(),
       path: props.endpoint.path,
       url: requestUrl(),
-      status: resp.status,
-      statusText: resp.statusText,
+      status: response.value.status,
+      statusText: response.value.statusText,
       time: response.value.time,
       size: response.value.size,
     })
     loadHistory()
   } catch (e) {
-    error.value = `请求失败: ${(e as Error).message}。若跨域失败，请切换到「本地代理」环境。`
+    error.value = `请求失败: ${(e as Error).message}。若跨域失败，请切换「本地代理」（同源）环境或使用自定义地址。`
   } finally {
     sending.value = false
   }
 }
 
-/** 从登录响应中自动提取 Token（支持配置字段路径） */
-function tryAutoSaveToken(text: string) {
+/** 从登录响应中自动提取 Token（支持配置字段路径，仅 2xx） */
+function tryAutoSaveToken(text: string, status: number) {
+  if (status < 200 || status >= 300) return
   // 仅 POST 且路径含 login/auth/token 时触发
   const isLoginEndpoint = props.endpoint.method === 'post' &&
     /login|auth|token|signin/i.test(props.endpoint.path)

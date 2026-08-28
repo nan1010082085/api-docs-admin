@@ -49,18 +49,16 @@ pnpm build
 scp -r dist/* user@server:/var/www/api-docs/
 ```
 
-### 方式二：远程 URL
+### 方式二：远程 spec（需先下载）
 
-`specUrl` 直接指向远程地址，浏览器实时获取：
+浏览器直接 fetch 远程 spec 会受 CORS 限制，因此当前仅支持本地文件。
+如远程服务提供 OpenAPI，先下载到本地再接入：
 
-```ts
-{
-  id: 'your-project',
-  name: 'Your Project',
-  specUrl: 'http://your-server:3000/openapi.json',
-  // ...
-}
+```bash
+curl -o public/specs/your-api.json http://your-server:3000/openapi.json
 ```
+
+然后按「方式一」配置 `specUrl: 'specs/your-api.json'`。
 
 ## 构建部署
 
@@ -68,16 +66,16 @@ scp -r dist/* user@server:/var/www/api-docs/
 # 构建
 pnpm build
 
-# 部署到服务器
-scp -r dist/* ubuntu@server:~/schema-platform/apps/api-docs/
+# 部署到服务器（Vite base 为 /schema-platform/api-docs/）
+scp -r dist/* ubuntu@server:/var/www/schema-platform/api-docs/
 ```
 
-nginx 配置：
+nginx 配置（与 `vite.config.ts` 的 `base: '/schema-platform/api-docs/'` 保持一致）：
 
 ```nginx
-location /api-docs/ {
-    alias /var/www/api-docs/;
-    try_files $uri $uri/ /api-docs/index.html;
+location /schema-platform/api-docs/ {
+    alias /var/www/schema-platform/api-docs/;
+    try_files $uri $uri/ /schema-platform/api-docs/index.html;
 }
 ```
 
@@ -116,6 +114,12 @@ api-docs/
 │   └── types/              # TypeScript 类型定义
 └── package.json
 ```
+
+## 安全说明
+
+- Markdown 与响应体高亮均经 DOMPurify 清洗，避免 XSS。
+- **Token / API Key / Cookie 以明文存储在浏览器 localStorage**（键 `api-docs:env-auth`），
+  仅建议在受信任的内部环境使用；请勿在共享设备上保存敏感凭证，或改用仅会话内的自定义环境。
 
 ## License
 

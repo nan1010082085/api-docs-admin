@@ -1,5 +1,5 @@
 <template>
-  <ElConfigProvider :size="'default'" :z-index="2000">
+  <ElConfigProvider :size="'small'" :z-index="2000">
     <RouterView />
   </ElConfigProvider>
 </template>

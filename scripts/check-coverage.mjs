@@ -85,4 +85,4 @@ for (const [mod, list] of Object.entries(byMod)) {
   if (list.length > 20) console.log(`  ... +${list.length - 20} more`)
 }
 
-if (missing.length > 0) process.exitCode = 0
+if (missing.length > 0) process.exitCode = 1

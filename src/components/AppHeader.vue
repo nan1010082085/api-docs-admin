@@ -105,6 +105,7 @@
               </el-form-item>
             </el-form>
             <p class="auth-hint">填了什么就固定传什么，可同时启用。更多自定义字段用 Header / Query / Body。</p>
+            <p class="auth-hint">⚠️ 凭证以明文保存在浏览器 localStorage，请勿在共享设备上保存敏感信息。</p>
           </el-tab-pane>
 
           <el-tab-pane label="Header" name="header">

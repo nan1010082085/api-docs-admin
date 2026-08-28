@@ -21,6 +21,7 @@
 <script setup lang="ts">
 import { ref, watch, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { ElMessage } from 'element-plus'
 import { useDocsStore } from '@/stores/docs'
 import AppHeader from '@/components/AppHeader.vue'
 import Sidebar from '@/components/Sidebar.vue'
@@ -80,7 +81,13 @@ function syncFromRoute() {
   if (method && endpointPath) {
     const path = decodePath(endpointPath)
     const ep = store.findEndpoint(method, path)
-    selectedEndpoint.value = ep ?? null
+    if (ep) {
+      selectedEndpoint.value = ep
+    } else {
+      selectedEndpoint.value = null
+      ElMessage.warning(`接口不存在：${method.toUpperCase()} ${path}`)
+      router.replace({ name: 'project', params: { projectId: store.activeProjectId } })
+    }
   } else if (route.name === 'project' || route.name === 'home') {
     selectedEndpoint.value = null
   }

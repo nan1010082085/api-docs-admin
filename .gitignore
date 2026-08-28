@@ -11,8 +11,10 @@ dist/
 .npmrc
 *.local
 
-# 构建时生成的 spec 打包文件（由 scripts/bundle-spec.mjs 生成）
-public/specs/schema-platform.yaml
+# OpenAPI spec 文件（包含服务器地址和接口结构，不公开）
+public/specs/*.yaml
+public/specs/*.json
+public/specs/components/
 
 # TypeScript 构建缓存
 *.tsbuildinfo

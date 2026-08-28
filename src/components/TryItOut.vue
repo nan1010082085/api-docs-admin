@@ -398,11 +398,9 @@ function formatSize(bytes: number) {
 
 <style lang="scss" scoped>
 .try-it-out {
-  background: #fff;
-  border: 1px solid #e4e7ed;
-  border-radius: 8px;
-  padding: 20px 24px;
-  margin-top: 24px;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
 }
 
 .try-title {

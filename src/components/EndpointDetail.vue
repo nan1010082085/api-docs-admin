@@ -11,81 +11,93 @@
       <el-tag v-if="endpoint.deprecated" type="danger" size="small">已废弃</el-tag>
     </div>
 
-    <!-- 左右分栏：参数 + 在线测试 -->
-    <div class="detail-body">
+    <!-- 左右栅格：参数 + 在线测试 -->
+    <div class="detail-grid">
       <!-- 左侧：参数/请求体/响应/认证 -->
-      <div class="detail-left">
-        <el-tabs v-model="activeTab" class="detail-tabs">
-          <el-tab-pane label="请求参数" name="params">
-            <ParamTable
-              v-if="pathParams.length"
-              title="路径参数"
-              :params="pathParams"
-            />
-            <ParamTable
-              v-if="queryParams.length"
-              title="查询参数"
-              :params="queryParams"
-            />
-            <ParamTable
-              v-if="headerParams.length"
-              title="请求头"
-              :params="headerParams"
-            />
-            <el-empty v-if="!pathParams.length && !queryParams.length && !headerParams.length" description="无参数" :image-size="48" />
-          </el-tab-pane>
+      <div class="detail-card">
+        <div class="card-header" @click="leftCollapsed = !leftCollapsed">
+          <span>请求参数</span>
+          <el-icon><ArrowDown v-if="leftCollapsed" /><ArrowUp v-else /></el-icon>
+        </div>
+        <div v-show="!leftCollapsed" class="card-body">
+          <el-tabs v-model="activeTab" class="detail-tabs">
+            <el-tab-pane label="请求参数" name="params">
+              <ParamTable
+                v-if="pathParams.length"
+                title="路径参数"
+                :params="pathParams"
+              />
+              <ParamTable
+                v-if="queryParams.length"
+                title="查询参数"
+                :params="queryParams"
+              />
+              <ParamTable
+                v-if="headerParams.length"
+                title="请求头"
+                :params="headerParams"
+              />
+              <el-empty v-if="!pathParams.length && !queryParams.length && !headerParams.length" description="无参数" :image-size="48" />
+            </el-tab-pane>
 
-          <el-tab-pane label="请求体" name="body">
-            <div v-if="endpoint.requestBody" class="body-section">
-              <div v-if="endpoint.requestBody.description" class="markdown-body" v-html="renderMarkdown(endpoint.requestBody.description)" />
-              <div v-for="(media, mediaType) in endpoint.requestBody.content" :key="mediaType" class="media-section">
-                <el-tag size="small" type="info">{{ mediaType }}</el-tag>
-                <SchemaViewer v-if="media.schema" :schema="media.schema" />
-                <div v-if="media.example" class="example-block">
-                  <h5>示例</h5>
-                  <pre><code>{{ formatJson(media.example) }}</code></pre>
+            <el-tab-pane label="请求体" name="body">
+              <div v-if="endpoint.requestBody" class="body-section">
+                <div v-if="endpoint.requestBody.description" class="markdown-body" v-html="renderMarkdown(endpoint.requestBody.description)" />
+                <div v-for="(media, mediaType) in endpoint.requestBody.content" :key="mediaType" class="media-section">
+                  <el-tag size="small" type="info">{{ mediaType }}</el-tag>
+                  <SchemaViewer v-if="media.schema" :schema="media.schema" />
+                  <div v-if="media.example" class="example-block">
+                    <h5>示例</h5>
+                    <pre><code>{{ formatJson(media.example) }}</code></pre>
+                  </div>
                 </div>
               </div>
-            </div>
-            <el-empty v-else description="无请求体" :image-size="48" />
-          </el-tab-pane>
+              <el-empty v-else description="无请求体" :image-size="48" />
+            </el-tab-pane>
 
-          <el-tab-pane label="响应" name="responses">
-            <div v-if="endpoint.responses && Object.keys(endpoint.responses).length">
-              <div v-for="(resp, statusCode) in endpoint.responses" :key="statusCode" class="response-section">
-                <h4>
-                  <span :class="statusClass(statusCode)">{{ statusCode }}</span>
-                  <span v-if="resp.description" class="resp-desc">{{ resp.description }}</span>
-                </h4>
-                <div v-if="resp.content">
-                  <div v-for="(media, mediaType) in resp.content" :key="mediaType" class="media-section">
-                    <el-tag size="small" type="info">{{ mediaType }}</el-tag>
-                    <SchemaViewer v-if="media.schema" :schema="media.schema" />
-                    <div v-if="media.example" class="example-block">
-                      <h5>示例</h5>
-                      <pre><code>{{ formatJson(media.example) }}</code></pre>
+            <el-tab-pane label="响应" name="responses">
+              <div v-if="endpoint.responses && Object.keys(endpoint.responses).length">
+                <div v-for="(resp, statusCode) in endpoint.responses" :key="statusCode" class="response-section">
+                  <h4>
+                    <span :class="statusClass(statusCode)">{{ statusCode }}</span>
+                    <span v-if="resp.description" class="resp-desc">{{ resp.description }}</span>
+                  </h4>
+                  <div v-if="resp.content">
+                    <div v-for="(media, mediaType) in resp.content" :key="mediaType" class="media-section">
+                      <el-tag size="small" type="info">{{ mediaType }}</el-tag>
+                      <SchemaViewer v-if="media.schema" :schema="media.schema" />
+                      <div v-if="media.example" class="example-block">
+                        <h5>示例</h5>
+                        <pre><code>{{ formatJson(media.example) }}</code></pre>
+                      </div>
                     </div>
                   </div>
                 </div>
               </div>
-            </div>
-            <el-empty v-else description="无响应定义" :image-size="48" />
-          </el-tab-pane>
+              <el-empty v-else description="无响应定义" :image-size="48" />
+            </el-tab-pane>
 
-          <el-tab-pane v-if="endpoint.security?.length" label="认证" name="auth">
-            <p class="auth-info">此接口需要认证。支持：</p>
-            <ul>
-              <li v-for="(_, idx) in endpoint.security" :key="idx">
-                <el-tag size="small">Bearer Token</el-tag> 或 <el-tag size="small">API Key</el-tag>
-              </li>
-            </ul>
-          </el-tab-pane>
-        </el-tabs>
+            <el-tab-pane v-if="endpoint.security?.length" label="认证" name="auth">
+              <p class="auth-info">此接口需要认证。支持：</p>
+              <ul>
+                <li v-for="(_, idx) in endpoint.security" :key="idx">
+                  <el-tag size="small">Bearer Token</el-tag> 或 <el-tag size="small">API Key</el-tag>
+                </li>
+              </ul>
+            </el-tab-pane>
+          </el-tabs>
+        </div>
       </div>
 
       <!-- 右侧：在线测试 -->
-      <div class="detail-right">
-        <TryItOut :endpoint="endpoint" />
+      <div class="detail-card">
+        <div class="card-header" @click="rightCollapsed = !rightCollapsed">
+          <span>在线测试</span>
+          <el-icon><ArrowDown v-if="rightCollapsed" /><ArrowUp v-else /></el-icon>
+        </div>
+        <div v-show="!rightCollapsed" class="card-body card-body-fill">
+          <TryItOut :endpoint="endpoint" />
+        </div>
       </div>
     </div>
   </div>
@@ -93,6 +105,7 @@
 
 <script setup lang="ts">
 import { ref, computed } from 'vue'
+import { ArrowDown, ArrowUp } from '@element-plus/icons-vue'
 import type { ApiEndpoint } from '@/types'
 import { useDocsStore } from '@/stores/docs'
 import { renderMarkdown } from '@/utils/markdown'
@@ -107,6 +120,8 @@ const props = defineProps<{
 
 const store = useDocsStore()
 const activeTab = ref('params')
+const leftCollapsed = ref(false)
+const rightCollapsed = ref(false)
 
 const pathParams = computed(() =>
   (props.endpoint.parameters ?? []).filter((p) => p.in === 'path'),
@@ -169,33 +184,66 @@ function formatJson(val: unknown): string {
   margin-bottom: 8px;
 }
 
-// 左右分栏
-.detail-body {
+// 栅格布局
+.detail-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  align-items: stretch;
+}
+
+.detail-card {
+  background: #fff;
+  border: 1px solid #e4e7ed;
+  border-radius: 8px;
   display: flex;
-  gap: 20px;
-  align-items: flex-start;
+  flex-direction: column;
+  overflow: hidden;
 }
 
-.detail-left {
+.card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  background: #f5f7fa;
+  border-bottom: 1px solid #e4e7ed;
+  cursor: pointer;
+  user-select: none;
+  font-weight: 600;
+  font-size: 14px;
+  color: #303133;
+
+  &:hover {
+    background: #ecf5ff;
+  }
+
+  .el-icon {
+    font-size: 14px;
+    color: #909399;
+  }
+}
+
+.card-body {
+  padding: 16px;
   flex: 1;
-  min-width: 0;
+  overflow: auto;
 }
 
-.detail-right {
-  width: 480px;
-  flex-shrink: 0;
-  position: sticky;
-  top: 24px;
+.card-body-fill {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
 }
 
 .detail-tabs {
-  background: #fff;
-  border-radius: 8px;
-  padding: 16px;
+  :deep(.el-tabs__header) {
+    margin-bottom: 12px;
+  }
 }
 
 .body-section, .response-section {
-  margin-bottom: 24px;
+  margin-bottom: 20px;
 }
 
 .media-section {

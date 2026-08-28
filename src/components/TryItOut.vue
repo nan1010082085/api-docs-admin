@@ -322,7 +322,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, onBeforeUnmount } from 'vue'
 import { Delete, Promotion, DocumentCopy } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import type { UploadFile } from 'element-plus'
@@ -584,8 +584,7 @@ function resetFromEndpoint() {
 
   if (selectedContentType.value === 'multipart/form-data') {
     bodyMode.value = 'formdata'
-    formDataFields.value = []
-    addFormDataField()
+    rebuildFormDataFields()
   } else if (canUseFormMode.value || (content && Object.values(content)[0]?.schema?.properties)) {
     bodyMode.value = 'form'
     rebuildBodyFields()
@@ -634,14 +633,106 @@ function addQueryRow() {
   })
 }
 
+function isBinarySchema(schema?: JsonSchema): boolean {
+  if (!schema) return false
+  return schema.format === 'binary' || schema.format === 'byte' || (schema as { type?: string }).type === 'file'
+}
+
+function isImageLikeField(name: string, schema?: JsonSchema): boolean {
+  const hay = `${name} ${schema?.description ?? ''}`.toLowerCase()
+  return /image|img|avatar|photo|picture|封面|图片|头像|icon/.test(hay)
+}
+
+function clearFormDataPreview(field: FormDataField) {
+  if (field.previewUrl) {
+    URL.revokeObjectURL(field.previewUrl)
+    field.previewUrl = null
+  }
+}
+
+/** 按 OpenAPI multipart schema 预填 form-data 字段 */
+function rebuildFormDataFields() {
+  for (const field of formDataFields.value) clearFormDataPreview(field)
+
+  const schema = bodySchema.value
+  const propsMap = schema?.properties
+  if (!propsMap || !Object.keys(propsMap).length) {
+    formDataFields.value = []
+    addFormDataField()
+    return
+  }
+
+  const required = new Set(schema?.required ?? [])
+  formDataFields.value = Object.entries(propsMap).map(([name, prop]) => {
+    const binary = isBinarySchema(prop)
+    const image = binary && isImageLikeField(name, prop)
+    return {
+      id: nextId(),
+      enabled: true,
+      name,
+      type: binary ? 'file' as const : 'text' as const,
+      value: binary ? '' : exampleToInputValue(generateExample(prop)),
+      fileName: '',
+      file: null,
+      previewUrl: null,
+      accept: image ? 'image/*' : binary ? '*/*' : '',
+      required: required.has(name),
+      fromSpec: true,
+      description: prop.description ?? (binary ? '文件' : ''),
+    }
+  })
+}
+
 function addFormDataField() {
-  formDataFields.value.push({ name: '', type: 'text', value: '', fileName: '', file: null })
+  formDataFields.value.push({
+    id: nextId(),
+    enabled: true,
+    name: '',
+    type: 'text',
+    value: '',
+    fileName: '',
+    file: null,
+    previewUrl: null,
+    accept: '',
+    required: false,
+    fromSpec: false,
+    description: '',
+  })
+}
+
+function removeFormDataField(idx: number) {
+  const field = formDataFields.value[idx]
+  if (field) clearFormDataPreview(field)
+  formDataFields.value.splice(idx, 1)
+}
+
+function clearFormDataFile(idx: number) {
+  const field = formDataFields.value[idx]
+  if (!field) return
+  clearFormDataPreview(field)
+  field.file = null
+  field.fileName = ''
+}
+
+function onFormDataTypeChange(field: FormDataField) {
+  if (field.type === 'text') {
+    clearFormDataFile(formDataFields.value.indexOf(field))
+    field.accept = ''
+  } else if (!field.accept) {
+    field.accept = isImageLikeField(field.name) ? 'image/*' : '*/*'
+  }
 }
 
 function handleFileChange(idx: number, file: UploadFile) {
-  if (formDataFields.value[idx]) {
-    formDataFields.value[idx].file = (file.raw as File) ?? null
-    formDataFields.value[idx].fileName = file.name
+  const field = formDataFields.value[idx]
+  if (!field) return
+  clearFormDataPreview(field)
+  const raw = (file.raw as File) ?? null
+  field.file = raw
+  field.fileName = file.name
+  if (raw && raw.type.startsWith('image/')) {
+    field.previewUrl = URL.createObjectURL(raw)
+    if (!field.accept) field.accept = 'image/*'
   }
 }
 
@@ -703,9 +794,12 @@ function getOutgoingBody(): { body: BodyInit | undefined; headers: Record<string
   if (bodyMode.value === 'formdata' || selectedContentType.value === 'multipart/form-data') {
     const formData = new FormData()
     for (const field of formDataFields.value) {
-      if (!field.name.trim()) continue
-      if (field.type === 'file' && field.file) formData.append(field.name, field.file)
-      else formData.append(field.name, field.value)
+      if (!field.enabled || !field.name.trim()) continue
+      if (field.type === 'file') {
+        if (field.file) formData.append(field.name, field.file, field.fileName || field.file.name)
+      } else {
+        formData.append(field.name, field.value)
+      }
     }
     // 让浏览器自动带 boundary
     delete headers['Content-Type']
@@ -899,10 +993,14 @@ watch(bodyMode, (mode) => {
     rebuildBodyFields()
   } else if (mode === 'formdata') {
     selectedContentType.value = 'multipart/form-data'
-    if (!formDataFields.value.length) addFormDataField()
+    rebuildFormDataFields()
   } else if (mode === 'raw' && !bodyValue.value && bodyFields.value.length) {
     bodyValue.value = buildJsonBodyFromForm()
   }
+})
+
+onBeforeUnmount(() => {
+  for (const field of formDataFields.value) clearFormDataPreview(field)
 })
 </script>
 

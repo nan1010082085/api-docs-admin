@@ -55,13 +55,19 @@
       <el-button :icon="Download" @click="handleExport">导出 JSON</el-button>
     </div>
 
-    <el-dialog v-model="authVisible" title="环境认证" width="480px" destroy-on-close>
+    <AppDialog
+      v-model="authVisible"
+      title="环境认证"
+      width="480px"
+      :show-fullscreen-btn="false"
+      @confirm="saveAuth"
+    >
       <el-form label-width="100px">
         <el-form-item label="认证方式">
-          <el-radio-group v-model="authForm.authType">
-            <el-radio value="bearer">Bearer Token</el-radio>
-            <el-radio value="apiKey">API Key</el-radio>
-            <el-radio value="none">无</el-radio>
+          <el-radio-group v-model="authForm.authType" class="auth-radios">
+            <el-radio-button value="bearer">Bearer Token</el-radio-button>
+            <el-radio-button value="apiKey">API Key</el-radio-button>
+            <el-radio-button value="none">无</el-radio-button>
           </el-radio-group>
         </el-form-item>
         <el-form-item v-if="authForm.authType === 'bearer'" label="Token">
@@ -99,7 +105,7 @@
         <el-button @click="authVisible = false">取消</el-button>
         <el-button type="primary" @click="saveAuth">保存</el-button>
       </template>
-    </el-dialog>
+    </AppDialog>
   </header>
 </template>
 
@@ -108,6 +114,7 @@ import { ref, computed, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { Download, Search } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
+import AppDialog from '@schema-platform/platform-shared/components/common/AppDialog.vue'
 import { useDocsStore } from '@/stores/docs'
 import { downloadOpenApiJson } from '@/utils/export'
 import type { AuthType } from '@/types'
@@ -240,5 +247,13 @@ watch(
 
 .search-input {
   width: 240px;
+}
+
+.auth-radios {
+  :deep(.el-radio-button__inner) {
+    height: 32px;
+    line-height: 30px;
+    padding: 0 14px;
+  }
 }
 </style>

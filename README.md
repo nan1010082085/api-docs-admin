@@ -1,17 +1,17 @@
-# API Docs
+# API Docs Admin
 
-独立运行的 API 接口文档平台，基于 Vue 3 + Element Plus 构建。
+Portal 全项目 API 接口文档管理平台。
 
-## 特性
+## 接入的项目
 
-- 读取 OpenAPI 3.0 YAML/JSON spec
-- 接口搜索与分类浏览、URL 深链
-- 参数表格、Schema 展示
-- **在线测试（Apifox 风格）**：Path / Query 参数表、Body 表单与 Raw、Headers、Cookie
-- 环境认证（Bearer / API Key），登录成功自动写入 Token
-- 本地 Vite 代理 `/api` → `localhost:3001`，避免 CORS
-- 复制 cURL、导出 OpenAPI JSON（Apifox / Swagger / Postman）
-- 多项目 / 多环境配置
+| 项目 | 端口 | 接口数 | 说明 |
+|------|------|--------|------|
+| Schema Platform | 30001 | 202 | 可视化表单设计器 |
+| Salary Flow | 8000 | 36 | 工资流程管理 |
+| Amber of Time | 14091 | 3 | AI 网关（OpenAI 兼容） |
+| 灵感ing | 19071 | 15 | 灵感卡片应用 |
+| Matrix Studio | 8001 | 4 | 矩阵 AI 应用 |
+| Stock Analysis | 5080 | 14 | 股票四维分析 |
 
 ## 快速开始
 
@@ -20,45 +20,100 @@ pnpm install
 pnpm dev
 ```
 
-访问 http://localhost:5500/schema-platform/api-docs/
+访问 http://localhost:5500
 
-默认测试环境选 **本地代理**（baseUrl 为空，请求走 Vite 代理）。
+## 接入新项目
 
-## 在线测试
+### 方式一：本地文件
 
-1. 顶部选择环境，点击 **认证** 配置 Token / API Key（或先调登录接口自动写入）
-2. 左侧选中接口后，在右侧 **Params** 填 Query/Path，**Body** 用「表单」或「JSON / Raw」
-3. 发送；需要可点 **复制 cURL**
-
-## Spec 维护
-
-```bash
-# 从 sibling server/openapi 同步
-pnpm sync:openapi
-pnpm bundle
-
-# 对照 routes-report 检查文档覆盖率
-pnpm check:coverage
-```
-
-## 添加新项目
-
-编辑 `src/config/projects.ts`：
+1. 将 OpenAPI spec 文件（`.yaml` 或 `.json`）放到 `public/specs/`
+2. 编辑 `src/config/projects.ts`：
 
 ```ts
 {
-  id: 'my-project',
-  name: 'My Project',
-  specUrl: 'specs/my-project.yaml',
+  id: 'your-project',
+  name: 'Your Project',
+  specUrl: 'specs/your-api.json',
   description: '项目描述',
   environments: [
-    { name: '本地代理', baseUrl: '', authType: 'bearer' },
+    { name: '本地开发', baseUrl: 'http://localhost:3000' },
+    { name: '线上环境', baseUrl: 'https://your-domain.com' },
   ],
+}
+```
+
+3. 构建部署：
+
+```bash
+pnpm build
+scp -r dist/* user@server:/var/www/api-docs/
+```
+
+### 方式二：远程 URL
+
+`specUrl` 直接指向远程地址，浏览器实时获取：
+
+```ts
+{
+  id: 'your-project',
+  name: 'Your Project',
+  specUrl: 'http://your-server:3000/openapi.json',
+  // ...
 }
 ```
 
 ## 构建部署
 
 ```bash
+# 构建
 pnpm build
+
+# 部署到服务器
+scp -r dist/* ubuntu@server:~/schema-platform/apps/api-docs/
 ```
+
+nginx 配置：
+
+```nginx
+location /api-docs/ {
+    alias /var/www/api-docs/;
+    try_files $uri $uri/ /api-docs/index.html;
+}
+```
+
+## 功能
+
+- 接口分类浏览（按 tag 分组）
+- 参数表格 + Schema 展示
+- Markdown 渲染（代码高亮）
+- 在线测试（环境切换、参数填充、文件上传）
+- 导出 OpenAPI JSON（兼容 Apifox / Swagger）
+- 多项目切换
+- 左右分栏 / 全宽测试视图
+
+## 技术栈
+
+- Vue 3 + TypeScript
+- Element Plus 2.14.2
+- Vite
+- Pinia
+- js-yaml + marked + highlight.js
+
+## 目录结构
+
+```
+api-docs/
+├── public/specs/           # OpenAPI spec 文件
+├── scripts/bundle-spec.mjs # 多文件 YAML 合并脚本
+├── src/
+│   ├── components/         # Vue 组件
+│   ├── config/projects.ts  # 多项目配置
+│   ├── stores/docs.ts      # Pinia 状态管理
+│   ├── utils/              # 工具函数（parser、markdown、export）
+│   └── types/              # TypeScript 类型定义
+└── package.json
+```
+
+## License
+
+MIT

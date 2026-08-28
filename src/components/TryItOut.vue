@@ -716,7 +716,9 @@ function clearFormDataFile(idx: number) {
 
 function onFormDataTypeChange(field: FormDataField) {
   if (field.type === 'text') {
-    clearFormDataFile(formDataFields.value.indexOf(field))
+    clearFormDataPreview(field)
+    field.file = null
+    field.fileName = ''
     field.accept = ''
   } else if (!field.accept) {
     field.accept = isImageLikeField(field.name) ? 'image/*' : '*/*'
@@ -855,6 +857,22 @@ async function sendRequest() {
       error.value = `Query 参数 ${row.name} 为必填项`
       activeTab.value = 'params'
       return
+    }
+  }
+
+  if (bodyMode.value === 'formdata') {
+    for (const field of formDataFields.value) {
+      if (!field.enabled) continue
+      if (field.required && field.type === 'file' && !field.file) {
+        error.value = `form-data 文件字段 ${field.name || '(未命名)'} 为必填项`
+        activeTab.value = 'body'
+        return
+      }
+      if (field.required && field.type === 'text' && !field.value) {
+        error.value = `form-data 字段 ${field.name || '(未命名)'} 为必填项`
+        activeTab.value = 'body'
+        return
+      }
     }
   }
 
@@ -1009,6 +1027,26 @@ onBeforeUnmount(() => {
   height: 100%;
   display: flex;
   flex-direction: column;
+  // 与顶栏 el-select / el-input 默认高度对齐（32px）
+  --try-control-h: 32px;
+
+  :deep(.el-input:not(.el-input--textarea) .el-input__wrapper) {
+    min-height: var(--try-control-h);
+  }
+
+  :deep(.el-select .el-select__wrapper) {
+    min-height: var(--try-control-h);
+  }
+
+  :deep(.el-button:not(.is-circle):not(.is-text)) {
+    height: var(--try-control-h);
+    padding: 0 15px;
+  }
+
+  :deep(.el-button.is-circle) {
+    width: var(--try-control-h);
+    height: var(--try-control-h);
+  }
 }
 
 .try-title {
@@ -1028,13 +1066,8 @@ onBeforeUnmount(() => {
 .try-url-bar {
   display: flex;
   gap: 8px;
-  align-items: stretch;
+  align-items: center;
   margin-bottom: 8px;
-
-  :deep(.el-input__wrapper),
-  :deep(.el-input-group__prepend) {
-    height: 40px;
-  }
 }
 
 .base-url-input {
@@ -1042,6 +1075,7 @@ onBeforeUnmount(() => {
 
   :deep(.el-input-group__prepend) {
     padding: 0 12px;
+    height: var(--try-control-h);
   }
 }
 
@@ -1052,7 +1086,6 @@ onBeforeUnmount(() => {
 }
 
 .send-btn {
-  height: 40px;
   min-width: 80px;
 }
 
@@ -1120,6 +1153,12 @@ onBeforeUnmount(() => {
   grid-template-columns: 36px 120px 1fr 72px 1fr 36px;
 }
 
+.formdata-table .params-header,
+.formdata-table .params-row {
+  grid-template-columns: 36px 120px 100px 1fr 120px 36px;
+  align-items: start;
+}
+
 .form-header,
 .form-row {
   grid-template-columns: 36px 120px 1fr 72px 1fr;
@@ -1131,6 +1170,7 @@ onBeforeUnmount(() => {
   font-weight: 600;
   color: #606266;
   border-bottom: 1px solid #e4e7ed;
+  align-items: center;
 }
 
 .params-row {
@@ -1153,6 +1193,7 @@ onBeforeUnmount(() => {
   font-weight: 500;
   color: #303133;
   min-width: 0;
+  padding-top: 4px;
 
   .required {
     color: #f56c6c;
@@ -1160,10 +1201,19 @@ onBeforeUnmount(() => {
   }
 }
 
+.col-kind {
+  min-width: 0;
+}
+
+.kind-select {
+  width: 100%;
+}
+
 .col-type {
   font-family: 'SFMono-Regular', Consolas, monospace;
   font-size: 12px;
   color: #909399;
+  padding-top: 6px;
 }
 
 .col-desc {
@@ -1172,6 +1222,11 @@ onBeforeUnmount(() => {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  padding-top: 6px;
+}
+
+.col-action {
+  padding-top: 2px;
 }
 
 .body-toolbar {
@@ -1182,8 +1237,18 @@ onBeforeUnmount(() => {
   flex-wrap: wrap;
 }
 
+.mode-radios {
+  :deep(.el-radio-button__inner) {
+    height: var(--try-control-h);
+    line-height: calc(var(--try-control-h) - 2px);
+    padding: 0 14px;
+    display: inline-flex;
+    align-items: center;
+  }
+}
+
 .content-type-select {
-  width: 220px;
+  width: 240px;
 }
 
 .body-editor {
@@ -1204,19 +1269,51 @@ onBeforeUnmount(() => {
   gap: 8px;
 }
 
-.form-data-row {
+.file-field {
   display: flex;
+  flex-direction: column;
   gap: 8px;
+  width: 100%;
+}
+
+.file-meta {
+  display: flex;
   align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  background: #f5f7fa;
+  border-radius: 6px;
+  border: 1px solid #e4e7ed;
+}
 
-  .field-name {
-    width: 140px;
-  }
+.file-preview {
+  width: 48px;
+  height: 48px;
+  object-fit: cover;
+  border-radius: 4px;
+  border: 1px solid #e4e7ed;
+  flex-shrink: 0;
+}
 
-  .field-value,
-  .file-upload {
-    flex: 1;
-  }
+.file-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.file-name {
+  font-size: 13px;
+  color: #303133;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.file-size {
+  font-size: 12px;
+  color: #909399;
 }
 
 .kv-table {

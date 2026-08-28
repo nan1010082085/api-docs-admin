@@ -75,16 +75,25 @@ export interface ApiTagGroup {
   endpoints: ApiEndpoint[]
 }
 
+/** 认证方式 */
+export type AuthType = 'bearer' | 'apiKey' | 'none'
+
 /** 测试环境配置 */
 export interface Environment {
   /** 环境名称 */
   name: string
-  /** 请求前缀，如 http://localhost:3001 */
+  /** 请求前缀，如 http://localhost:3001；空字符串表示同源（走 Vite 代理） */
   baseUrl: string
   /** 默认请求头 */
   headers?: Record<string, string>
   /** 默认 Cookie */
   cookie?: string
+  /** Bearer Token（不含 Bearer 前缀） */
+  token?: string
+  /** API Key（X-API-Key） */
+  apiKey?: string
+  /** 认证方式 */
+  authType?: AuthType
 }
 
 /** 项目配置 */

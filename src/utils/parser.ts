@@ -52,12 +52,16 @@ export async function parseSpec(config: ProjectConfig): Promise<ProjectData> {
     }
   }
 
-  // 解析所有端点
+  // 解析所有端点（合并 path 级与 operation 级 parameters）
   const endpoints: ApiEndpoint[] = []
   for (const [path, pathItem] of Object.entries(paths)) {
+    const pathParams = parseParameters(
+      (pathItem as Record<string, unknown>).parameters as unknown[],
+    )
     for (const [method, operation] of Object.entries(pathItem)) {
       if (!isHttpMethod(method)) continue
       const op = resolveRef(operation) as Record<string, unknown>
+      const opParams = parseParameters(op.parameters as unknown[])
       const endpoint: ApiEndpoint = {
         id: `${method}-${path}`,
         method,
@@ -66,7 +70,7 @@ export async function parseSpec(config: ProjectConfig): Promise<ProjectData> {
         description: op.description as string | undefined,
         tags: (op.tags as string[]) ?? [],
         deprecated: op.deprecated as boolean | undefined,
-        parameters: parseParameters(op.parameters as unknown[]),
+        parameters: mergeParameters(pathParams, opParams),
         requestBody: parseRequestBody(op.requestBody),
         responses: parseResponses(op.responses as Record<string, unknown>),
         security: op.security as unknown[] | undefined,
@@ -147,18 +151,29 @@ function isHttpMethod(s: string): s is HttpMethod {
 
 function parseParameters(raw: unknown[]): ApiParameter[] {
   if (!Array.isArray(raw)) return []
-  return raw.map((p) => {
+  const result: ApiParameter[] = []
+  for (const p of raw) {
     const param = resolveRef(p) as Record<string, unknown>
-    return {
+    if (!param?.name || !param?.in) continue
+    result.push({
       name: param.name as string,
       in: param.in as ApiParameter['in'],
       description: param.description as string | undefined,
       required: param.required as boolean | undefined,
       deprecated: param.deprecated as boolean | undefined,
       schema: resolveRef(param.schema) as JsonSchema | undefined,
-      example: param.example,
-    }
-  })
+      example: param.example ?? (param.schema as JsonSchema | undefined)?.example,
+    })
+  }
+  return result
+}
+
+/** operation 参数覆盖同名 path 参数 */
+function mergeParameters(pathParams: ApiParameter[], opParams: ApiParameter[]): ApiParameter[] {
+  const map = new Map<string, ApiParameter>()
+  for (const p of pathParams) map.set(`${p.in}:${p.name}`, p)
+  for (const p of opParams) map.set(`${p.in}:${p.name}`, p)
+  return [...map.values()]
 }
 
 function parseRequestBody(raw: unknown): RequestBody | undefined {

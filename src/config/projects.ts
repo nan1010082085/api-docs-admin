@@ -5,8 +5,8 @@ import type { ProjectConfig } from '@/types'
  *
  * 添加新项目：在数组中增加一项即可。
  * specUrl 支持：
- *   - 本地文件：'specs/schema-platform.yaml'（放在 public/ 目录下）
- *   - 远程 URL：'http://server:3001/api/docs.json'
+ *   - 本地文件：'specs/xxx.json'（放在 public/specs/ 目录下）
+ *   - 远程 URL：'http://server:port/openapi.json'
  *
  * environments: 测试环境列表，每个环境可配置 baseUrl、默认 headers、cookie
  */
@@ -17,14 +17,8 @@ const projects: ProjectConfig[] = [
     specUrl: 'specs/schema-platform.yaml',
     description: '可视化表单设计器后端 API',
     environments: [
-      {
-        name: '本地开发',
-        baseUrl: 'http://localhost:3001',
-      },
-      {
-        name: '线上环境',
-        baseUrl: 'https://pyflow.icu/schema-platform',
-      },
+      { name: '本地开发', baseUrl: 'http://localhost:3001' },
+      { name: '线上环境', baseUrl: 'https://pyflow.icu/schema-platform' },
     ],
   },
   {
@@ -33,17 +27,50 @@ const projects: ProjectConfig[] = [
     specUrl: 'specs/salary-flow.json',
     description: '工资流程管理系统 API',
     environments: [
-      {
-        name: '本地开发',
-        baseUrl: 'http://localhost:8000',
-      },
-      {
-        name: '线上环境',
-        baseUrl: 'https://pyflow.icu/salary',
-      },
+      { name: '本地开发', baseUrl: 'http://localhost:8000' },
+      { name: '线上环境', baseUrl: 'https://pyflow.icu/salary' },
     ],
   },
-  // ── 在此追加更多项目 ──
+  {
+    id: 'amber-of-time',
+    name: 'Amber of Time',
+    specUrl: 'specs/amber-of-time.json',
+    description: 'AI 网关，兼容 OpenAI API 格式',
+    environments: [
+      { name: '本地开发', baseUrl: 'http://localhost:14091' },
+      { name: '线上环境', baseUrl: 'https://pyflow.icu/amber-of-time' },
+    ],
+  },
+  {
+    id: 'inspiration',
+    name: '灵感ing',
+    specUrl: 'specs/inspiration.json',
+    description: '灵感卡片应用（服务未运行）',
+    environments: [
+      { name: '本地开发', baseUrl: 'http://localhost:19071' },
+      { name: '线上环境', baseUrl: 'https://pyflow.icu/inspiration' },
+    ],
+  },
+  {
+    id: 'matrix-app',
+    name: 'Matrix Studio',
+    specUrl: 'specs/matrix-app.json',
+    description: 'Matrix Studio 应用（服务未运行）',
+    environments: [
+      { name: '本地开发', baseUrl: 'http://localhost:5001' },
+      { name: '线上环境', baseUrl: 'https://pyflow.icu/matrix-app' },
+    ],
+  },
+  {
+    id: 'stock-analysis',
+    name: 'Stock Analysis',
+    specUrl: 'specs/stock-analysis.json',
+    description: '股票分析应用（服务异常）',
+    environments: [
+      { name: '本地开发', baseUrl: 'http://localhost:5080' },
+      { name: '线上环境', baseUrl: 'https://pyflow.icu/stock-analysis' },
+    ],
+  },
 ]
 
 export default projects

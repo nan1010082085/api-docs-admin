@@ -28,6 +28,13 @@
         />
         <el-option label="自定义" :value="-1" />
       </el-select>
+      <el-input
+        v-if="store.activeEnvIndex === -1"
+        v-model="store.customBaseUrl"
+        placeholder="输入自定义地址，如 http://localhost:3001"
+        class="custom-url-input"
+        clearable
+      />
       <el-tag v-if="store.totalEndpoints" type="info" size="small">
         {{ store.totalEndpoints }} 个接口
       </el-tag>
@@ -85,6 +92,8 @@ function handleExport() {
   display: flex;
   align-items: center;
   gap: 12px;
+  flex: 1;
+  min-width: 0;
 }
 
 .logo {
@@ -95,20 +104,28 @@ function handleExport() {
 }
 
 .project-select {
-  width: 200px;
+  width: 180px;
+  flex-shrink: 0;
 }
 
 .env-select {
-  width: 140px;
+  width: 120px;
+  flex-shrink: 0;
+}
+
+.custom-url-input {
+  width: 300px;
+  flex-shrink: 0;
 }
 
 .header-right {
   display: flex;
   align-items: center;
   gap: 12px;
+  flex-shrink: 0;
 }
 
 .search-input {
-  width: 280px;
+  width: 240px;
 }
 </style>

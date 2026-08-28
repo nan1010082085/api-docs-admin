@@ -20,12 +20,26 @@ const projects: ProjectConfig[] = [
       {
         name: '本地开发',
         baseUrl: 'http://localhost:3001',
-        headers: {},
       },
       {
         name: '线上环境',
         baseUrl: 'https://pyflow.icu/schema-platform',
-        headers: {},
+      },
+    ],
+  },
+  {
+    id: 'salary-flow',
+    name: 'Salary Flow',
+    specUrl: 'specs/salary-flow.json',
+    description: '工资流程管理系统 API',
+    environments: [
+      {
+        name: '本地开发',
+        baseUrl: 'http://localhost:8000',
+      },
+      {
+        name: '线上环境',
+        baseUrl: 'https://pyflow.icu/salary',
       },
     ],
   },

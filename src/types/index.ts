@@ -126,6 +126,21 @@ export interface ProjectConfig {
   environments?: Environment[]
 }
 
+/** 安全方案（从 OpenAPI securitySchemes / Swagger securityDefinitions 解析） */
+export interface SecurityScheme {
+  /** 方案名（key in securitySchemes） */
+  name: string
+  /** 方案类型 */
+  type: 'bearer' | 'apiKey' | 'basic' | 'oauth2' | 'openIdConnect' | 'none'
+  /** apiKey 位置：header / query / cookie */
+  in?: 'header' | 'query' | 'cookie'
+  /** apiKey 字段名（如 X-API-Key、Authorization、token） */
+  fieldName?: string
+  /** http scheme（basic / bearer / digest...） */
+  scheme?: string
+  description?: string
+}
+
 /** 解析后的项目数据 */
 export interface ProjectData {
   config: ProjectConfig
@@ -135,6 +150,8 @@ export interface ProjectData {
   baseUrl?: string
   groups: ApiTagGroup[]
   endpoints: ApiEndpoint[]
+  /** 项目级安全方案列表 */
+  securitySchemes?: SecurityScheme[]
 }
 
 /** Try-it-out 请求配置 */

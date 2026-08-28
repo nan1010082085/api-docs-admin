@@ -9,7 +9,9 @@ import type {
   ProjectData,
   RequestBody,
   ApiResponse,
+  SecurityScheme,
 } from '@/types'
+import { convertSwagger2ToOpenAPI3 } from '@/utils/swagger2to3'
 
 /** 完整的 OpenAPI root，用于 $ref 解析 */
 interface OpenApiRoot {
@@ -27,14 +29,18 @@ let _root: OpenApiRoot = {}
 
 /**
  * 解析 OpenAPI spec（YAML 或 JSON）为 ProjectData
+ * 自动兼容 Swagger 2.0：检测到 swagger: "2.0" 时先转换为 OpenAPI 3
  */
 export async function parseSpec(config: ProjectConfig): Promise<ProjectData> {
   const text = await fetchSpec(config.specUrl)
-  const raw: OpenApiRoot = text.trim().startsWith('{') ? JSON.parse(text) : yaml.load(text) as OpenApiRoot
+  const parsed: unknown = text.trim().startsWith('{') ? JSON.parse(text) : yaml.load(text)
 
-  if (!raw || typeof raw !== 'object') {
-    throw new Error(`无法解析 spec: ${config.specUrl}`)
+  if (!parsed || typeof parsed !== 'object') {
+    throw new Error('无法解析 spec: ' + config.specUrl)
   }
+
+  // Swagger 2.0 -> OpenAPI 3 自动转换（如果不是 2.0 则原样返回）
+  const raw: OpenApiRoot = convertSwagger2ToOpenAPI3(parsed) as OpenApiRoot
 
   _root = raw
 
@@ -82,6 +88,11 @@ export async function parseSpec(config: ProjectConfig): Promise<ProjectData> {
   // 按 tag 分组
   const groups = groupByTag(endpoints, tagDescriptions)
 
+  // 解析项目级安全方案
+  const securitySchemes = parseSecuritySchemes(
+    (raw as Record<string, unknown>).components as Record<string, unknown> | undefined,
+  )
+
   return {
     config,
     title: info.title as string,
@@ -90,6 +101,7 @@ export async function parseSpec(config: ProjectConfig): Promise<ProjectData> {
     baseUrl,
     groups,
     endpoints,
+    securitySchemes,
   }
 }
 
@@ -232,6 +244,35 @@ function parseResponses(
       description: r.description as string | undefined,
       content: Object.keys(content).length > 0 ? content : undefined,
     }
+  }
+  return result
+}
+
+/** 解析 components.securitySchemes -> SecurityScheme[] */
+function parseSecuritySchemes(components: Record<string, unknown> | undefined): SecurityScheme[] {
+  if (!components) return []
+  const rawSchemes = components.securitySchemes as Record<string, Record<string, unknown>> | undefined
+  if (!rawSchemes) return []
+  const result: SecurityScheme[] = []
+  for (const [name, scheme] of Object.entries(rawSchemes)) {
+    const s = resolveRef(scheme) as Record<string, unknown>
+    const type = s.type as string
+    if (!type) continue
+    const ss: SecurityScheme = { name, type: 'none', description: s.description as string | undefined }
+    if (type === 'http') {
+      const sch = (s.scheme as string) ?? 'bearer'
+      ss.type = sch === 'basic' ? 'basic' : 'bearer'
+      ss.scheme = sch
+    } else if (type === 'apiKey') {
+      ss.type = 'apiKey'
+      ss.in = s.in as 'header' | 'query' | 'cookie'
+      ss.fieldName = s.name as string
+    } else if (type === 'oauth2') {
+      ss.type = 'oauth2'
+    } else if (type === 'openIdConnect') {
+      ss.type = 'openIdConnect'
+    }
+    result.push(ss)
   }
   return result
 }

@@ -325,12 +325,38 @@
       </div>
       <el-tabs v-model="respTab" class="resp-tabs" size="small">
         <el-tab-pane label="响应体" name="body">
-          <pre class="response-body"><code>{{ responseBodyFormatted }}</code></pre>
+          <div class="resp-toolbar">
+            <el-button size="small" @click="copyResponse">复制</el-button>
+            <el-button size="small" @click="extractTokenFromResponse">提取 Token</el-button>
+            <el-input
+              v-model="tokenFieldConfig"
+              size="small"
+              placeholder="Token JSON 路径，如 data.token"
+              class="token-field-input"
+              @change="saveTokenFieldConfig(tokenFieldConfig)"
+            />
+          </div>
+          <pre class="response-body"><code class="hljs" v-html="responseBodyHighlighted"></code></pre>
         </el-tab-pane>
         <el-tab-pane label="响应头" name="headers">
           <div v-for="(val, key) in response.headers" :key="key" class="resp-header-item">
             <code>{{ key }}</code>: {{ val }}
           </div>
+        </el-tab-pane>
+        <el-tab-pane :label="`历史`" name="history">
+          <div class="history-toolbar">
+            <el-button size="small" @click="onClearHistory">清空历史</el-button>
+          </div>
+          <div v-if="history.length" class="history-list">
+            <div v-for="h in history" :key="h.id" class="history-item">
+              <span :class="statusClass(h.status)">{{ h.status }}</span>
+              <code class="history-method">{{ h.method }}</code>
+              <code class="history-url" :title="h.url">{{ h.url }}</code>
+              <span class="history-meta">{{ h.time }}ms · {{ formatSize(h.size) }}</span>
+              <span class="history-time">{{ formatTime(h.requestTime) }}</span>
+            </div>
+          </div>
+          <el-empty v-else description="暂无请求历史" :image-size="48" />
         </el-tab-pane>
       </el-tabs>
     </div>
@@ -351,6 +377,10 @@ import {
   generateExample,
   parseInputBySchema,
 } from '@/utils/example'
+import { autoExtractToken, extractTokenFromBody } from '@/utils/auth'
+import { highlightCode, langFromContentType, tryFormatJson } from '@/utils/highlight'
+import { getHistory, addHistory, clearHistory } from '@/utils/history'
+import type { HistoryEntry } from '@/utils/history'
 import type { ApiEndpoint, ApiParameter, JsonSchema, TryResponse } from '@/types'
 
 const props = defineProps<{
@@ -358,6 +388,23 @@ const props = defineProps<{
 }>()
 
 const store = useDocsStore()
+
+/** Token 提取字段路径配置（用户可自定义从哪个 JSON 路径提取 Token） */
+const tokenFieldConfig = ref(localStorage.getItem('api-docs:token-field') || '')
+function saveTokenFieldConfig(val: string) {
+  tokenFieldConfig.value = val
+  localStorage.setItem('api-docs:token-field', val)
+}
+
+/** 请求历史 */
+const history = ref<HistoryEntry[]>([])
+function loadHistory() {
+  history.value = getHistory(store.activeProjectId)
+}
+function onClearHistory() {
+  clearHistory(store.activeProjectId)
+  history.value = []
+}
 
 interface ParamRow {
   id: string
@@ -517,12 +564,43 @@ function collectQueryParts(): string[] {
 
 const responseBodyFormatted = computed(() => {
   if (!response.value) return ''
-  try {
-    return JSON.stringify(JSON.parse(response.value.body), null, 2)
-  } catch {
-    return response.value.body
-  }
+  return tryFormatJson(response.value.body)
 })
+
+/** 高亮后的响应体 HTML */
+const responseBodyHighlighted = computed(() => {
+  if (!response.value) return ''
+  const formatted = responseBodyFormatted.value
+  const ct = response.value.headers['content-type'] || ''
+  const lang = langFromContentType(ct) || 'json'
+  return highlightCode(formatted, lang)
+})
+
+/** 复制响应体 */
+async function copyResponse() {
+  if (!response.value) return
+  try {
+    await navigator.clipboard.writeText(responseBodyFormatted.value)
+    ElMessage.success('响应体已复制')
+  } catch {
+    ElMessage.error('复制失败')
+  }
+}
+
+/** 手动从当前响应体提取 Token */
+function extractTokenFromResponse() {
+  if (!response.value) return
+  const body = response.value.body
+  const field = tokenFieldConfig.value
+  const token = field ? extractTokenFromBody(body, field) : autoExtractToken(body)
+  if (token) {
+    store.updateActiveEnv({ token })
+    ElMessage.success('已提取 Token 并保存到当前环境')
+    syncHeadersFromEnv()
+  } else {
+    ElMessage.warning('未从响应中找到 Token，可在配置中指定 JSON 路径')
+  }
+}
 
 function paramDefaultValue(p: ApiParameter): string {
   if (p.example !== undefined) return exampleToInputValue(p.example)
@@ -661,6 +739,7 @@ function resetFromEndpoint() {
   localBaseUrl.value = store.activeEnvironment?.baseUrl ?? ''
   syncHeadersFromEnv()
   activeTab.value = 'params'
+  loadHistory()
 }
 
 function addQueryRow() {
@@ -1013,6 +1092,20 @@ async function sendRequest() {
 
     // 登录成功时尝试回写 token
     tryAutoSaveToken(text)
+
+    // 记录请求历史
+    addHistory({
+      projectId: store.activeProjectId,
+      endpointId: props.endpoint.id,
+      method: props.endpoint.method.toUpperCase(),
+      path: props.endpoint.path,
+      url: requestUrl(),
+      status: resp.status,
+      statusText: resp.statusText,
+      time: response.value.time,
+      size: response.value.size,
+    })
+    loadHistory()
   } catch (e) {
     error.value = `请求失败: ${(e as Error).message}。若跨域失败，请切换到「本地代理」环境。`
   } finally {
@@ -1020,18 +1113,21 @@ async function sendRequest() {
   }
 }
 
+/** 从登录响应中自动提取 Token（支持配置字段路径） */
 function tryAutoSaveToken(text: string) {
-  if (!props.endpoint.path.includes('/auth/login')) return
-  try {
-    const json = JSON.parse(text) as { success?: boolean; data?: { token?: string; accessToken?: string } }
-    const token = json.data?.token ?? json.data?.accessToken
-    if (json.success && token) {
-      store.updateActiveEnv({ token })
-      ElMessage.success('已自动保存 Token 到当前环境')
-      syncHeadersFromEnv()
-    }
-  } catch {
-    // ignore
+  // 仅 POST 且路径含 login/auth/token 时触发
+  const isLoginEndpoint = props.endpoint.method === 'post' &&
+    /login|auth|token|signin/i.test(props.endpoint.path)
+  if (!isLoginEndpoint) return
+  // 优先使用用户配置的 token 字段路径，否则自动遍历常见字段
+  const configField = tokenFieldConfig.value
+  const token = configField
+    ? extractTokenFromBody(text, configField)
+    : autoExtractToken(text)
+  if (token) {
+    store.updateActiveEnv({ token })
+    ElMessage.success('已自动提取 Token 并保存到当前环境')
+    syncHeadersFromEnv()
   }
 }
 
@@ -1060,6 +1156,11 @@ function statusClass(status: number) {
   if (status >= 200 && status < 300) return 'status-2xx'
   if (status >= 300 && status < 400) return 'status-3xx'
   return 'status-4xx'
+}
+
+function formatTime(ts: number): string {
+  const d = new Date(ts)
+  return d.toLocaleString('zh-CN', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
 }
 
 function formatSize(bytes: number) {
@@ -1475,6 +1576,17 @@ onBeforeUnmount(() => {
   padding: 12px 16px;
 }
 
+.resp-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.token-field-input {
+  width: 200px;
+}
+
 .response-body {
   background: #f6f8fa;
   padding: 16px;
@@ -1496,6 +1608,53 @@ onBeforeUnmount(() => {
   code {
     font-weight: 500;
     color: #d73a49;
+  }
+}
+
+.history-toolbar {
+  margin-bottom: 8px;
+}
+
+.history-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.history-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  background: #f5f7fa;
+
+  .history-method {
+    font-weight: 600;
+    color: #303133;
+    flex-shrink: 0;
+    min-width: 40px;
+  }
+
+  .history-url {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: #606266;
+  }
+
+  .history-meta {
+    color: #909399;
+    flex-shrink: 0;
+  }
+
+  .history-time {
+    color: #c0c4cc;
+    flex-shrink: 0;
+    font-size: 11px;
   }
 }
 

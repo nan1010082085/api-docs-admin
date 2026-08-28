@@ -1,8 +1,9 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import type { ApiEndpoint, AuthType, EnvKvRow, Environment, ProjectConfig, ProjectData } from '@/types'
+import type { ApiEndpoint, AuthType, EnvKvRow, Environment, ProjectConfig, ProjectData, SecurityScheme } from '@/types'
 import { parseSpec } from '@/utils/parser'
 import projectConfigs from '@/config/projects'
+import { buildAuthPayload } from '@/utils/auth'
 
 const STORAGE_KEY = 'api-docs:env-auth'
 
@@ -113,6 +114,13 @@ export const useDocsStore = defineStore('docs', () => {
 
   const totalEndpoints = computed(() => activeProject.value?.endpoints.length ?? 0)
 
+  /** 当前项目的安全方案列表 */
+  const activeSecuritySchemes = computed<SecurityScheme[]>(() => {
+    const project = activeProject.value
+    if (!project) return []
+    return project.securitySchemes ?? []
+  })
+
   function getOverride(envName: string): EnvAuthPatch {
     const pid = activeProjectId.value
     return envOverrides.value[pid]?.[envName] ?? {}
@@ -167,27 +175,15 @@ export const useDocsStore = defineStore('docs', () => {
   }
 
   /**
-   * 根据当前环境拼装认证相关请求头：填了什么就带什么（可叠加）
+   * 根据当前环境 + 安全方案拼装认证相关请求头
    */
   function getAuthHeaders(): Record<string, string> {
-    const env = activeEnvironment.value
-    if (!env) return {}
-    const headers: Record<string, string> = {
-      ...(env.headers ?? {}),
-      ...rowsToRecord(env.headerRows),
-    }
-    if (env.token?.trim()) {
-      headers['Authorization'] = `Bearer ${env.token.trim()}`
-    }
-    if (env.apiKey?.trim()) {
-      headers['X-API-Key'] = env.apiKey.trim()
-    }
-    return headers
+    return buildAuthPayload(activeEnvironment.value, activeSecuritySchemes.value).headers
   }
 
-  /** 环境级固定 Query */
+  /** 环境级固定 Query + apiKey(query) */
   function getAuthQuery(): Record<string, string> {
-    return rowsToRecord(activeEnvironment.value?.queryRows)
+    return buildAuthPayload(activeEnvironment.value, activeSecuritySchemes.value).queryParams
   }
 
   /** 环境级固定 Body 字段 */
@@ -268,6 +264,7 @@ export const useDocsStore = defineStore('docs', () => {
     searchQuery,
     filteredGroups,
     totalEndpoints,
+    activeSecuritySchemes,
     loading,
     error,
     loadAllProjects,

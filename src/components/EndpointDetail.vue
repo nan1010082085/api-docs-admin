@@ -83,13 +83,24 @@
             <el-empty v-else description="无响应定义" :image-size="48" />
           </el-tab-pane>
 
-          <el-tab-pane v-if="endpoint.security?.length" label="认证" name="auth">
-            <p class="auth-info">此接口需要认证。支持：</p>
-            <ul>
-              <li v-for="(_, idx) in endpoint.security" :key="idx">
-                <el-tag size="small">Bearer Token</el-tag> 或 <el-tag size="small">API Key</el-tag>
-              </li>
-            </ul>
+          <el-tab-pane v-if="endpoint.security?.length || securitySchemes.length" label="认证" name="auth">
+            <p class="auth-info">此接口需要认证，支持以下方案：</p>
+            <div v-if="securitySchemes.length" class="auth-schemes">
+              <div v-for="scheme in securitySchemes" :key="scheme.name" class="auth-scheme-item">
+                <el-tag size="small" :type="schemeTagType(scheme.type)">{{ scheme.type }}</el-tag>
+                <code class="scheme-name">{{ scheme.name }}</code>
+                <span v-if="scheme.fieldName" class="scheme-field">字段: <code>{{ scheme.fieldName }}</code></span>
+                <span v-if="scheme.in" class="scheme-in">位置: {{ scheme.in }}</span>
+                <p v-if="scheme.description" class="scheme-desc">{{ scheme.description }}</p>
+              </div>
+            </div>
+            <div v-else>
+              <ul>
+                <li v-for="(_, idx) in endpoint.security" :key="idx">
+                  <el-tag size="small">Bearer Token</el-tag> 或 <el-tag size="small">API Key</el-tag>
+                </li>
+              </ul>
+            </div>
           </el-tab-pane>
         </el-tabs>
       </div>
@@ -111,6 +122,7 @@ import { ref, computed } from 'vue'
 import AppIcon from '@/components/AppIcon.vue'
 import type { ApiEndpoint } from '@/types'
 import { renderMarkdown } from '@/utils/markdown'
+import { useDocsStore } from '@/stores/docs'
 import MethodBadge from './MethodBadge.vue'
 import ParamTable from './ParamTable.vue'
 import SchemaViewer from './SchemaViewer.vue'
@@ -119,6 +131,8 @@ import TryItOut from './TryItOut.vue'
 const props = defineProps<{
   endpoint: ApiEndpoint
 }>()
+
+const store = useDocsStore()
 
 const activeTab = ref('params')
 const viewMode = ref<'split' | 'test'>('split')
@@ -132,6 +146,18 @@ const queryParams = computed(() =>
 const headerParams = computed(() =>
   (props.endpoint.parameters ?? []).filter((p) => p.in === 'header'),
 )
+
+/** 项目级安全方案 */
+const securitySchemes = computed(() => store.activeSecuritySchemes)
+
+function schemeTagType(type: string) {
+  switch (type) {
+    case 'bearer': return 'warning'
+    case 'apiKey': return 'info'
+    case 'basic': return 'danger'
+    default: return 'success'
+  }
+}
 
 function statusClass(code: string) {
   const n = parseInt(code, 10)
@@ -274,5 +300,45 @@ function formatJson(val: unknown): string {
 .auth-info {
   margin-bottom: 8px;
   color: #606266;
+}
+
+.auth-schemes {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.auth-scheme-item {
+  padding: 12px;
+  border: 1px solid #e4e7ed;
+  border-radius: 6px;
+  background: #f5f7fa;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+
+  .scheme-name {
+    font-family: 'SFMono-Regular', Consolas, monospace;
+    font-size: 13px;
+    color: #303133;
+    font-weight: 600;
+  }
+
+  .scheme-field, .scheme-in {
+    font-size: 12px;
+    color: #606266;
+
+    code {
+      color: #d73a49;
+    }
+  }
+
+  .scheme-desc {
+    width: 100%;
+    font-size: 12px;
+    color: #909399;
+    margin: 4px 0 0;
+  }
 }
 </style>

@@ -26,7 +26,7 @@ pnpm dev
 
 ### 方式一：本地文件
 
-1. 将 OpenAPI spec 文件（`.yaml` 或 `.json`）放到 `public/specs/`
+1. 将 OpenAPI spec 文件（`.yaml` 或 `.json`，支持 OpenAPI 3.x 和 Swagger 2.0）放到 `public/specs/`
 2. 编辑 `src/config/projects.ts`：
 
 ```ts
@@ -85,9 +85,12 @@ location /api-docs/ {
 
 - 接口分类浏览（按 tag 分组）
 - 参数表格 + Schema 展示
-- Markdown 渲染（代码高亮）
-- 在线测试（环境切换、参数填充、文件上传）
-- 导出 OpenAPI JSON（兼容 Apifox / Swagger）
+- Markdown 渲染（代码高亮，DOMPurify 防 XSS）
+- 在线测试（环境切换、参数填充、文件上传、响应高亮、请求历史）
+- 多源认证（Bearer / API Key / Basic / Cookie，自动识别 spec securitySchemes）
+- 登录响应自动提取 Token（可配置 JSON 路径）
+- 兼容 OpenAPI 3.x + Swagger 2.0（自动转换）
+- 导出 OpenAPI JSON（兼容 Apifox / Swagger / Postman）
 - 多项目切换
 - 左右分栏 / 全宽测试视图
 
@@ -97,7 +100,7 @@ location /api-docs/ {
 - Element Plus 2.14.2
 - Vite
 - Pinia
-- js-yaml + marked + highlight.js
+- js-yaml + marked + marked-highlight + highlight.js + DOMPurify
 
 ## 目录结构
 

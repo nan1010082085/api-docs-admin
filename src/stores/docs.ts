@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import type { ApiEndpoint, AuthType, Environment, ProjectConfig, ProjectData } from '@/types'
+import type { ApiEndpoint, AuthType, EnvKvRow, Environment, ProjectConfig, ProjectData } from '@/types'
 import { parseSpec } from '@/utils/parser'
 import projectConfigs from '@/config/projects'
 
@@ -12,6 +12,9 @@ interface EnvAuthPatch {
   authType?: AuthType
   cookie?: string
   headers?: Record<string, string>
+  headerRows?: EnvKvRow[]
+  queryRows?: EnvKvRow[]
+  bodyRows?: EnvKvRow[]
   baseUrl?: string
 }
 
@@ -35,6 +38,16 @@ function loadPersisted(): PersistedAuth {
 
 function savePersisted(data: PersistedAuth) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(data))
+}
+
+/** 启用中的键值行 → Record */
+function rowsToRecord(rows?: EnvKvRow[]): Record<string, string> {
+  const out: Record<string, string> = {}
+  if (!rows) return out
+  for (const row of rows) {
+    if (row.enabled && row.key.trim()) out[row.key.trim()] = row.value
+  }
+  return out
 }
 
 export const useDocsStore = defineStore('docs', () => {
@@ -64,13 +77,17 @@ export const useDocsStore = defineStore('docs', () => {
     const envs = activeProject.value?.config.environments
     if (!envs || activeEnvIndex.value < 0 || activeEnvIndex.value >= envs.length) return null
     const base = envs[activeEnvIndex.value]
+    const ov = getOverride(base.name)
     return {
       ...base,
-      ...getOverride(base.name),
+      ...ov,
       headers: {
         ...(base.headers ?? {}),
-        ...(getOverride(base.name).headers ?? {}),
+        ...(ov.headers ?? {}),
       },
+      headerRows: ov.headerRows ?? base.headerRows ?? [],
+      queryRows: ov.queryRows ?? base.queryRows ?? [],
+      bodyRows: ov.bodyRows ?? base.bodyRows ?? [],
     }
   })
 
@@ -126,20 +143,22 @@ export const useDocsStore = defineStore('docs', () => {
   }
 
   /**
-   * 更新当前环境的认证 / Cookie / 自定义头
+   * 更新当前环境的认证 / Cookie / 自定义字段
    */
   function updateActiveEnv(patch: EnvAuthPatch) {
     const env = activeEnvironment.value
     if (!env) return
     const pid = activeProjectId.value
     if (!envOverrides.value[pid]) envOverrides.value[pid] = {}
+    const prev = envOverrides.value[pid][env.name] ?? {}
     envOverrides.value[pid][env.name] = {
-      ...envOverrides.value[pid][env.name],
+      ...prev,
       ...patch,
-      headers: {
-        ...(envOverrides.value[pid][env.name]?.headers ?? {}),
-        ...(patch.headers ?? {}),
-      },
+      // 显式传入时整表替换，避免残留已删行
+      headers: patch.headers !== undefined ? patch.headers : prev.headers,
+      headerRows: patch.headerRows !== undefined ? patch.headerRows : prev.headerRows,
+      queryRows: patch.queryRows !== undefined ? patch.queryRows : prev.queryRows,
+      bodyRows: patch.bodyRows !== undefined ? patch.bodyRows : prev.bodyRows,
     }
     if (patch.baseUrl !== undefined && activeEnvIndex.value === -1) {
       customBaseUrl.value = patch.baseUrl
@@ -148,19 +167,32 @@ export const useDocsStore = defineStore('docs', () => {
   }
 
   /**
-   * 根据当前环境拼装认证相关请求头
+   * 根据当前环境拼装认证相关请求头：填了什么就带什么（可叠加）
    */
   function getAuthHeaders(): Record<string, string> {
     const env = activeEnvironment.value
     if (!env) return {}
-    const headers: Record<string, string> = { ...(env.headers ?? {}) }
-    const authType = env.authType ?? 'bearer'
-    if (authType === 'bearer' && env.token?.trim()) {
+    const headers: Record<string, string> = {
+      ...(env.headers ?? {}),
+      ...rowsToRecord(env.headerRows),
+    }
+    if (env.token?.trim()) {
       headers['Authorization'] = `Bearer ${env.token.trim()}`
-    } else if (authType === 'apiKey' && env.apiKey?.trim()) {
+    }
+    if (env.apiKey?.trim()) {
       headers['X-API-Key'] = env.apiKey.trim()
     }
     return headers
+  }
+
+  /** 环境级固定 Query */
+  function getAuthQuery(): Record<string, string> {
+    return rowsToRecord(activeEnvironment.value?.queryRows)
+  }
+
+  /** 环境级固定 Body 字段 */
+  function getAuthBodyFields(): Record<string, string> {
+    return rowsToRecord(activeEnvironment.value?.bodyRows)
   }
 
   async function loadAllProjects() {
@@ -244,6 +276,8 @@ export const useDocsStore = defineStore('docs', () => {
     setActiveEnvIndex,
     updateActiveEnv,
     getAuthHeaders,
+    getAuthQuery,
+    getAuthBodyFields,
     findEndpoint,
     persistNow,
   }

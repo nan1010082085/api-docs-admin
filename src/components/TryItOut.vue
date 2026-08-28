@@ -116,28 +116,21 @@
         </div>
       </el-tab-pane>
 
-      <!-- Body -->
+      <!-- Body：none / 表单 / Raw / form-data 同一组切换 -->
       <el-tab-pane name="body">
         <template #label>
           Body
-          <el-badge v-if="hasRequestBody" is-dot class="tab-badge" />
+          <el-badge v-if="hasRequestBody && bodyMode !== 'none'" is-dot class="tab-badge" />
         </template>
 
-        <div v-if="!supportsBody && !hasRequestBody" class="body-none">
-          <el-radio-group v-model="bodyNone" size="small">
-            <el-radio-button :value="true">none</el-radio-button>
+        <div class="body-toolbar">
+          <el-radio-group v-model="bodyMode" size="small">
+            <el-radio-button value="none">none</el-radio-button>
+            <el-radio-button value="form" :disabled="!canUseFormMode">表单</el-radio-button>
+            <el-radio-button value="raw">JSON / Raw</el-radio-button>
+            <el-radio-button value="formdata">form-data</el-radio-button>
           </el-radio-group>
-          <p class="field-hint">当前方法默认无请求体。如需自定义可切换 Content-Type 后编辑。</p>
-          <el-button size="small" @click="forceEnableBody">启用 Body</el-button>
-        </div>
-
-        <template v-else>
-          <div class="body-toolbar">
-            <el-radio-group v-model="bodyMode" size="small">
-              <el-radio-button value="form" :disabled="!canUseFormMode">表单</el-radio-button>
-              <el-radio-button value="raw">JSON / Raw</el-radio-button>
-              <el-radio-button value="formdata">form-data</el-radio-button>
-            </el-radio-group>
+          <template v-if="bodyMode !== 'none'">
             <el-select v-model="selectedContentType" size="small" class="content-type-select">
               <el-option label="application/json" value="application/json" />
               <el-option label="multipart/form-data" value="multipart/form-data" />
@@ -145,148 +138,152 @@
               <el-option label="text/plain" value="text/plain" />
             </el-select>
             <el-button size="small" @click="fillExample">填入示例</el-button>
-          </div>
+          </template>
+        </div>
 
-          <!-- 表单模式：按 schema properties 逐项录入 -->
-          <div v-if="bodyMode === 'form'" class="params-table">
-            <div class="params-header form-header">
+        <div v-if="bodyMode === 'none'" class="body-empty">
+          此请求不发送 Body。需要时可切换到 JSON / Raw 或 form-data。
+        </div>
+
+        <!-- 表单模式：按 schema properties 逐项录入 -->
+        <div v-else-if="bodyMode === 'form'" class="params-table">
+          <div class="params-header form-header">
+            <span class="col-check" />
+            <span class="col-name">字段名</span>
+            <span class="col-value">字段值</span>
+            <span class="col-type">类型</span>
+            <span class="col-desc">说明</span>
+          </div>
+          <div v-if="!bodyFields.length" class="params-empty">
+            无可用 schema 字段，请切换到 JSON / Raw 编辑
+          </div>
+          <div v-for="field in bodyFields" :key="field.name" class="params-row form-row">
+            <span class="col-check">
+              <el-checkbox v-model="field.enabled" :disabled="field.required" />
+            </span>
+            <span class="col-name">
+              {{ field.name }}
+              <span v-if="field.required" class="required">*</span>
+            </span>
+            <div class="col-value">
+              <el-switch
+                v-if="field.type === 'boolean'"
+                v-model="field.boolValue"
+                inline-prompt
+                active-text="true"
+                inactive-text="false"
+              />
+              <el-input
+                v-else
+                v-model="field.value"
+                size="small"
+                :placeholder="field.placeholder"
+                :type="field.type === 'object' || field.type === 'array' ? 'textarea' : 'text'"
+                :rows="field.type === 'object' || field.type === 'array' ? 3 : 1"
+              />
+            </div>
+            <span class="col-type">{{ field.type }}</span>
+            <span class="col-desc">{{ field.description }}</span>
+          </div>
+        </div>
+
+        <!-- Raw JSON -->
+        <el-input
+          v-else-if="bodyMode === 'raw'"
+          v-model="bodyValue"
+          type="textarea"
+          :rows="12"
+          :placeholder="bodyPlaceholder"
+          class="body-editor"
+        />
+
+        <!-- form-data：支持文本 / 文件 / 图片预览，按 OpenAPI schema 预填 -->
+        <div v-else class="form-data-section">
+          <div class="params-table formdata-table">
+            <div class="params-header">
               <span class="col-check" />
               <span class="col-name">字段名</span>
+              <span class="col-kind">类型</span>
               <span class="col-value">字段值</span>
-              <span class="col-type">类型</span>
               <span class="col-desc">说明</span>
+              <span class="col-action" />
             </div>
-            <div v-if="!bodyFields.length" class="params-empty">
-              无可用 schema 字段，请切换到 JSON / Raw 编辑
+            <div v-if="!formDataFields.length" class="params-empty">
+              暂无字段，可点击添加；binary 字段会自动识别为文件
             </div>
-            <div v-for="field in bodyFields" :key="field.name" class="params-row form-row">
+            <div v-for="(field, idx) in formDataFields" :key="field.id" class="params-row formdata-row">
               <span class="col-check">
-                <el-checkbox v-model="field.enabled" :disabled="field.required" />
+                <el-checkbox v-model="field.enabled" :disabled="field.required && field.fromSpec" />
               </span>
-              <span class="col-name">
-                {{ field.name }}
-                <span v-if="field.required" class="required">*</span>
-              </span>
-              <div class="col-value">
-                <el-switch
-                  v-if="field.type === 'boolean'"
-                  v-model="field.boolValue"
-                  inline-prompt
-                  active-text="true"
-                  inactive-text="false"
-                />
+              <div class="col-name">
                 <el-input
-                  v-else
+                  v-if="!field.fromSpec"
+                  v-model="field.name"
+                  size="small"
+                  placeholder="字段名"
+                />
+                <template v-else>
+                  {{ field.name }}
+                  <span v-if="field.required" class="required">*</span>
+                </template>
+              </div>
+              <div class="col-kind">
+                <el-select v-model="field.type" size="small" class="kind-select" @change="onFormDataTypeChange(field)">
+                  <el-option label="文本" value="text" />
+                  <el-option label="文件" value="file" />
+                </el-select>
+              </div>
+              <div class="col-value">
+                <el-input
+                  v-if="field.type === 'text'"
                   v-model="field.value"
                   size="small"
-                  :placeholder="field.placeholder"
-                  :type="field.type === 'object' || field.type === 'array' ? 'textarea' : 'text'"
-                  :rows="field.type === 'object' || field.type === 'array' ? 3 : 1"
+                  placeholder="字段值"
                 />
-              </div>
-              <span class="col-type">{{ field.type }}</span>
-              <span class="col-desc">{{ field.description }}</span>
-            </div>
-          </div>
-
-          <!-- Raw JSON -->
-          <el-input
-            v-else-if="bodyMode === 'raw'"
-            v-model="bodyValue"
-            type="textarea"
-            :rows="12"
-            :placeholder="bodyPlaceholder"
-            class="body-editor"
-          />
-
-          <!-- form-data：支持文本 / 文件 / 图片预览，按 OpenAPI schema 预填 -->
-          <div v-else class="form-data-section">
-            <div class="params-table formdata-table">
-              <div class="params-header">
-                <span class="col-check" />
-                <span class="col-name">字段名</span>
-                <span class="col-kind">类型</span>
-                <span class="col-value">字段值</span>
-                <span class="col-desc">说明</span>
-                <span class="col-action" />
-              </div>
-              <div v-if="!formDataFields.length" class="params-empty">
-                暂无字段，可点击添加；binary 字段会自动识别为文件
-              </div>
-              <div v-for="(field, idx) in formDataFields" :key="field.id" class="params-row formdata-row">
-                <span class="col-check">
-                  <el-checkbox v-model="field.enabled" :disabled="field.required && field.fromSpec" />
-                </span>
-                <div class="col-name">
-                  <el-input
-                    v-if="!field.fromSpec"
-                    v-model="field.name"
-                    size="small"
-                    placeholder="字段名"
-                  />
-                  <template v-else>
-                    {{ field.name }}
-                    <span v-if="field.required" class="required">*</span>
-                  </template>
-                </div>
-                <div class="col-kind">
-                  <el-select v-model="field.type" size="small" class="kind-select" @change="onFormDataTypeChange(field)">
-                    <el-option label="文本" value="text" />
-                    <el-option label="文件" value="file" />
-                  </el-select>
-                </div>
-                <div class="col-value">
-                  <el-input
-                    v-if="field.type === 'text'"
-                    v-model="field.value"
-                    size="small"
-                    placeholder="字段值"
-                  />
-                  <div v-else class="file-field">
-                    <el-upload
-                      :auto-upload="false"
-                      :show-file-list="false"
-                      :accept="field.accept || undefined"
-                      :on-change="(f: UploadFile) => handleFileChange(idx, f)"
-                    >
-                      <el-button size="small">
-                        {{ field.fileName || (field.accept.startsWith('image') ? '选择图片' : '选择文件') }}
-                      </el-button>
-                    </el-upload>
-                    <div v-if="field.file" class="file-meta">
-                      <img
-                        v-if="field.previewUrl"
-                        :src="field.previewUrl"
-                        alt="preview"
-                        class="file-preview"
-                      />
-                      <div class="file-info">
-                        <span class="file-name" :title="field.fileName">{{ field.fileName }}</span>
-                        <span class="file-size">{{ formatSize(field.file.size) }}</span>
-                      </div>
-                      <el-button text type="danger" size="small" @click="clearFormDataFile(idx)">清除</el-button>
+                <div v-else class="file-field">
+                  <el-upload
+                    :auto-upload="false"
+                    :show-file-list="false"
+                    :accept="field.accept || undefined"
+                    :on-change="(f: UploadFile) => handleFileChange(idx, f)"
+                  >
+                    <el-button size="small">
+                      {{ field.fileName || (field.accept.startsWith('image') ? '选择图片' : '选择文件') }}
+                    </el-button>
+                  </el-upload>
+                  <div v-if="field.file" class="file-meta">
+                    <img
+                      v-if="field.previewUrl"
+                      :src="field.previewUrl"
+                      alt="preview"
+                      class="file-preview"
+                    />
+                    <div class="file-info">
+                      <span class="file-name" :title="field.fileName">{{ field.fileName }}</span>
+                      <span class="file-size">{{ formatSize(field.file.size) }}</span>
                     </div>
+                    <el-button text type="danger" size="small" @click="clearFormDataFile(idx)">清除</el-button>
                   </div>
                 </div>
-                <span class="col-desc">{{ field.description }}</span>
-                <span class="col-action">
-                  <el-button
-                    v-if="!field.fromSpec || !field.required"
-                    circle
-                    size="small"
-                    @click="removeFormDataField(idx)"
-                  >
-                    <AppIcon name="delete" :size="14" />
-                  </el-button>
-                </span>
               </div>
+              <span class="col-desc">{{ field.description }}</span>
+              <span class="col-action">
+                <el-button
+                  v-if="!field.fromSpec || !field.required"
+                  circle
+                  size="small"
+                  @click="removeFormDataField(idx)"
+                >
+                  <AppIcon name="delete" :size="14" />
+                </el-button>
+              </span>
             </div>
-            <el-button class="add-btn" size="small" @click="addFormDataField">+ 添加字段</el-button>
-            <p class="field-hint">multipart 发送时由浏览器自动带 boundary，不会手写 Content-Type。</p>
           </div>
+          <el-button class="add-btn" size="small" @click="addFormDataField">+ 添加字段</el-button>
+          <p class="field-hint">multipart 发送时由浏览器自动带 boundary，不会手写 Content-Type。</p>
+        </div>
 
-          <p v-if="bodyError" class="field-error">{{ bodyError }}</p>
-        </template>
+        <p v-if="bodyError" class="field-error">{{ bodyError }}</p>
       </el-tab-pane>
 
       <!-- Headers -->
@@ -346,7 +343,7 @@
 import { ref, computed, watch, onBeforeUnmount } from 'vue'
 import { ElMessage } from 'element-plus'
 import type { UploadFile } from 'element-plus'
-import AppIcon from '@schema-platform/platform-shared/components/common/AppIcon.vue'
+import AppIcon from '@/components/AppIcon.vue'
 import { useDocsStore } from '@/stores/docs'
 import { buildCurlCommand } from '@/utils/curl'
 import {
@@ -421,9 +418,7 @@ const headerRows = ref<HeaderRow[]>([])
 const bodyFields = ref<BodyField[]>([])
 const formDataFields = ref<FormDataField[]>([])
 
-const bodyMode = ref<'form' | 'raw' | 'formdata'>('form')
-const bodyNone = ref(true)
-const bodyForced = ref(false)
+const bodyMode = ref<'none' | 'form' | 'raw' | 'formdata'>('none')
 const selectedContentType = ref('application/json')
 const bodyValue = ref('')
 const bodyError = ref('')
@@ -439,9 +434,6 @@ const localBaseUrl = ref('')
 const displayBaseUrl = computed(() => localBaseUrl.value)
 
 const hasRequestBody = computed(() => !!props.endpoint.requestBody)
-const supportsBody = computed(() =>
-  ['post', 'put', 'patch', 'delete'].includes(props.endpoint.method) || bodyForced.value,
-)
 
 const bodySchema = computed((): JsonSchema | undefined => {
   const content = props.endpoint.requestBody?.content
@@ -494,9 +486,7 @@ const fullUrl = computed(() => {
       url = url.replace(`{${row.name}}`, encodeURIComponent(row.value))
     }
   }
-  const queryParts = queryRows.value
-    .filter((r) => r.enabled && r.name.trim() && r.value !== '')
-    .map((r) => `${encodeURIComponent(r.name.trim())}=${encodeURIComponent(r.value)}`)
+  const queryParts = collectQueryParts()
   if (queryParts.length) url += (url.includes('?') ? '&' : '?') + queryParts.join('&')
 
   // 相对路径时补全当前 origin，方便预览
@@ -505,6 +495,25 @@ const fullUrl = computed(() => {
   }
   return url
 })
+
+/**
+ * 接口 Query + 环境固定 Query（同名以接口行优先）
+ */
+function collectQueryParts(): string[] {
+  const parts: string[] = []
+  const seen = new Set<string>()
+  for (const r of queryRows.value) {
+    if (!r.enabled || !r.name.trim() || r.value === '') continue
+    const key = r.name.trim()
+    seen.add(key)
+    parts.push(`${encodeURIComponent(key)}=${encodeURIComponent(r.value)}`)
+  }
+  for (const [key, value] of Object.entries(store.getAuthQuery())) {
+    if (seen.has(key)) continue
+    parts.push(`${encodeURIComponent(key)}=${encodeURIComponent(value)}`)
+  }
+  return parts
+}
 
 const responseBodyFormatted = computed(() => {
   if (!response.value) return ''
@@ -605,8 +614,6 @@ function resetFromEndpoint() {
   response.value = null
   error.value = ''
   bodyError.value = ''
-  bodyForced.value = false
-  bodyNone.value = !hasRequestBody.value
 
   const params = props.endpoint.parameters ?? []
   pathRows.value = params.filter((p) => p.in === 'path').map(toParamRow)
@@ -617,14 +624,19 @@ function resetFromEndpoint() {
     ? (Object.keys(content)[0] ?? 'application/json')
     : 'application/json'
 
-  if (selectedContentType.value === 'multipart/form-data') {
+  if (!hasRequestBody.value) {
+    bodyMode.value = 'none'
+    bodyFields.value = []
+    formDataFields.value = []
+    bodyValue.value = ''
+  } else if (selectedContentType.value === 'multipart/form-data') {
     bodyMode.value = 'formdata'
     rebuildFormDataFields()
   } else if (canUseFormMode.value || (content && Object.values(content)[0]?.schema?.properties)) {
     bodyMode.value = 'form'
     rebuildBodyFields()
     bodyValue.value = JSON.stringify(generateExample(bodySchema.value) ?? {}, null, 2)
-  } else if (hasRequestBody.value) {
+  } else {
     bodyMode.value = 'raw'
     bodyFields.value = []
     const media = content ? Object.values(content)[0] : undefined
@@ -635,10 +647,6 @@ function resetFromEndpoint() {
     } else {
       bodyValue.value = ''
     }
-  } else {
-    bodyMode.value = 'raw'
-    bodyFields.value = []
-    bodyValue.value = ''
   }
 
   // canUseFormMode depends on selectedContentType; rebuild after setting it
@@ -773,16 +781,8 @@ function handleFileChange(idx: number, file: UploadFile) {
   }
 }
 
-function forceEnableBody() {
-  bodyForced.value = true
-  bodyNone.value = false
-  bodyMode.value = 'raw'
-  if (!headerRows.value.some((r) => r.name.toLowerCase() === 'content-type')) {
-    headerRows.value.unshift({ enabled: true, name: 'Content-Type', value: 'application/json' })
-  }
-}
-
 function fillExample() {
+  if (bodyMode.value === 'none') return
   const schema = bodySchema.value
   const content = props.endpoint.requestBody?.content
   const media = content?.[selectedContentType.value] ?? content?.['application/json']
@@ -804,7 +804,46 @@ function buildJsonBodyFromForm(): string {
     if (field.value === '' && !field.required) continue
     obj[field.name] = parseInputBySchema(field.value, field.schema)
   }
+  // 环境固定 Body 字段（同名以表单优先）
+  for (const [k, v] of Object.entries(store.getAuthBodyFields())) {
+    if (!(k in obj)) obj[k] = coerceEnvBodyValue(v)
+  }
   return JSON.stringify(obj, null, 2)
+}
+
+/** 环境 Body 字符串尝试按 JSON 字面量解析 */
+function coerceEnvBodyValue(raw: string): unknown {
+  const t = raw.trim()
+  if (t === 'true') return true
+  if (t === 'false') return false
+  if (t === 'null') return null
+  if (/^-?\d+(\.\d+)?$/.test(t)) return Number(t)
+  if ((t.startsWith('{') && t.endsWith('}')) || (t.startsWith('[') && t.endsWith(']'))) {
+    try {
+      return JSON.parse(t)
+    } catch {
+      return raw
+    }
+  }
+  return raw
+}
+
+/**
+ * 把环境固定 Body 字段 merge 进 JSON 字符串
+ */
+function mergeAuthBodyIntoJson(raw: string): string {
+  const extras = store.getAuthBodyFields()
+  if (!Object.keys(extras).length) return raw
+  try {
+    const base = raw.trim() ? (JSON.parse(raw) as Record<string, unknown>) : {}
+    if (base === null || typeof base !== 'object' || Array.isArray(base)) return raw
+    for (const [k, v] of Object.entries(extras)) {
+      if (!(k in base)) base[k] = coerceEnvBodyValue(v)
+    }
+    return JSON.stringify(base, null, 2)
+  } catch {
+    return raw
+  }
 }
 
 function getOutgoingBody(): { body: BodyInit | undefined; headers: Record<string, string> } {
@@ -824,19 +863,25 @@ function getOutgoingBody(): { body: BodyInit | undefined; headers: Record<string
     headers['Cookie'] = cookieValue.value.trim()
   }
 
-  if (!supportsBody.value && !hasRequestBody.value) {
+  if (bodyMode.value === 'none') {
     return { body: undefined, headers }
   }
 
   if (bodyMode.value === 'formdata' || selectedContentType.value === 'multipart/form-data') {
     const formData = new FormData()
+    const seen = new Set<string>()
     for (const field of formDataFields.value) {
       if (!field.enabled || !field.name.trim()) continue
+      seen.add(field.name.trim())
       if (field.type === 'file') {
         if (field.file) formData.append(field.name, field.file, field.fileName || field.file.name)
       } else {
         formData.append(field.name, field.value)
       }
+    }
+    for (const [k, v] of Object.entries(store.getAuthBodyFields())) {
+      if (seen.has(k)) continue
+      formData.append(k, v)
     }
     // 让浏览器自动带 boundary
     delete headers['Content-Type']
@@ -849,9 +894,23 @@ function getOutgoingBody(): { body: BodyInit | undefined; headers: Record<string
   let raw = bodyValue.value
   if (bodyMode.value === 'form') {
     raw = buildJsonBodyFromForm()
+  } else if (bodyMode.value === 'raw' && selectedContentType.value.includes('json')) {
+    raw = mergeAuthBodyIntoJson(raw)
   }
 
-  if (!raw.trim()) return { body: undefined, headers }
+  if (!raw.trim()) {
+    // 仅环境 Body、无本地内容时仍可发送
+    const extras = store.getAuthBodyFields()
+    if (Object.keys(extras).length && selectedContentType.value.includes('json')) {
+      raw = JSON.stringify(
+        Object.fromEntries(Object.entries(extras).map(([k, v]) => [k, coerceEnvBodyValue(v)])),
+        null,
+        2,
+      )
+    } else {
+      return { body: undefined, headers }
+    }
+  }
 
   if (!Object.keys(headers).some((h) => h.toLowerCase() === 'content-type')) {
     headers['Content-Type'] = selectedContentType.value
@@ -868,10 +927,8 @@ function requestUrl(): string {
       url = url.replace(`{${row.name}}`, encodeURIComponent(row.value))
     }
   }
-  const queryParts = queryRows.value
-    .filter((r) => r.enabled && r.name.trim() && r.value !== '')
-    .map((r) => `${encodeURIComponent(r.name.trim())}=${encodeURIComponent(r.value)}`)
-  if (queryParts.length) url += '?' + queryParts.join('&')
+  const queryParts = collectQueryParts()
+  if (queryParts.length) url += (url.includes('?') ? '&' : '?') + queryParts.join('&')
   return url
 }
 
@@ -969,7 +1026,7 @@ function tryAutoSaveToken(text: string) {
     const json = JSON.parse(text) as { success?: boolean; data?: { token?: string; accessToken?: string } }
     const token = json.data?.token ?? json.data?.accessToken
     if (json.success && token) {
-      store.updateActiveEnv({ token, authType: 'bearer' })
+      store.updateActiveEnv({ token })
       ElMessage.success('已自动保存 Token 到当前环境')
       syncHeadersFromEnv()
     }
@@ -1041,6 +1098,7 @@ watch(selectedContentType, (ct) => {
 })
 
 watch(bodyMode, (mode) => {
+  if (mode === 'none') return
   if (mode === 'form') {
     selectedContentType.value = 'application/json'
     rebuildBodyFields()
@@ -1049,6 +1107,13 @@ watch(bodyMode, (mode) => {
     rebuildFormDataFields()
   } else if (mode === 'raw' && !bodyValue.value && bodyFields.value.length) {
     bodyValue.value = buildJsonBodyFromForm()
+  }
+  if (!headerRows.value.some((r) => r.name.toLowerCase() === 'content-type')) {
+    headerRows.value.unshift({
+      enabled: true,
+      name: 'Content-Type',
+      value: selectedContentType.value,
+    })
   }
 })
 
@@ -1279,8 +1344,10 @@ onBeforeUnmount(() => {
   }
 }
 
-.body-none {
-  padding: 8px 0;
+.body-empty {
+  padding: 24px 0;
+  color: #909399;
+  font-size: 13px;
 }
 
 .form-data-section {

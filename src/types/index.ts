@@ -75,8 +75,16 @@ export interface ApiTagGroup {
   endpoints: ApiEndpoint[]
 }
 
-/** 认证方式 */
+/** @deprecated 已改为填了就传，保留类型仅兼容旧 localStorage */
 export type AuthType = 'bearer' | 'apiKey' | 'none'
+
+/** 环境级键值行（Header / Query / Body 固定参数） */
+export interface EnvKvRow {
+  id: string
+  enabled: boolean
+  key: string
+  value: string
+}
 
 /** 测试环境配置 */
 export interface Environment {
@@ -86,6 +94,12 @@ export interface Environment {
   baseUrl: string
   /** 默认请求头 */
   headers?: Record<string, string>
+  /** 可编辑的额外 Header 行 */
+  headerRows?: EnvKvRow[]
+  /** 环境级固定 Query */
+  queryRows?: EnvKvRow[]
+  /** 环境级固定 Body 字段（合并进 JSON / 表单） */
+  bodyRows?: EnvKvRow[]
   /** 默认 Cookie */
   cookie?: string
   /** Bearer Token（不含 Bearer 前缀） */

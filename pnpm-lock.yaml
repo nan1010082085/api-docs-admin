@@ -11,15 +11,6 @@ importers:
       '@element-plus/icons-vue':
         specifier: ^2.3.1
         version: 2.3.2(vue@3.5.42(typescript@5.7.3))
-      '@iconify-icons/ep':
-        specifier: ^1.2.13
-        version: 1.2.13
-      '@iconify/vue':
-        specifier: ^5.0.1
-        version: 5.0.1(vue@3.5.42(typescript@5.7.3))
-      '@schema-platform/platform-shared':
-        specifier: file:../shared/platform-shared
-        version: file:../shared/platform-shared(element-plus@2.14.2(vue@3.5.42(typescript@5.7.3)))(typescript@5.7.3)(vue@3.5.42(typescript@5.7.3))
       axios:
         specifier: ^1.18.1
         version: 1.20.0
@@ -82,10 +73,6 @@ packages:
     engines: {node: '>=6.0.0'}
     hasBin: true
 
-  '@babel/runtime@7.29.7':
-    resolution: {integrity: sha512-Nq8OhGWiZIZGV6hLHoyAKLLcJihP/xFeBMGJoUrxTX2psI8dCifzLhZISFb+VWS3wFMRDmCGw5R+dOySCqPLhw==}
-    engines: {node: '>=6.9.0'}
-
   '@babel/types@7.29.8':
     resolution: {integrity: sha512-Vj1jF3cPfxg7OAfoI7QnVKLoILlm2JF9pnVHrX8qx7AHMiYWT+NDAA7jChlNgRS4WTLc/fD1lXLmPixluj+3Gg==}
     engines: {node: '>=6.9.0'}
@@ -107,33 +94,6 @@ packages:
 
   '@floating-ui/utils@0.2.12':
     resolution: {integrity: sha512-HpCo8tmWzLVad5s2d19EhAz5zqrrQ6s69qd6moPMQvkOuSwDT1YgRfWSVuc4ennqrgv3OHppiOGMQ7oC13yIww==}
-
-  '@iconify-icons/ep@1.2.13':
-    resolution: {integrity: sha512-Lj77wbkag8QZcWj+GaSmVs4yviHg2bzcrreCtuugYJBvyzNmjx4IEAJIInF8rtzBPLVt0amdx+OHKth71HvMBA==}
-
-  '@iconify/types@2.0.0':
-    resolution: {integrity: sha512-+wluvCrRhXrhyOmRDJ3q8mux9JkKy5SJ/v8ol2tu4FVjyYvtEzkc/3pK15ET6RKg4b4w4BmTk1+gsCUhf21Ykg==}
-
-  '@iconify/vue@5.0.1':
-    resolution: {integrity: sha512-aumwwooJlFJ5H5qYWB6ZTAyM0C8hpfcSVLB9/a3qnH1GGvIJ+FEbpEs4s/HfErYe/M5qZeLjwmESR5fFm3lXEw==}
-    peerDependencies:
-      vue: '>=3.0.0'
-
-  '@intlify/core-base@11.4.10':
-    resolution: {integrity: sha512-+yJ74JRWVJokdgG9zYNMyTSzeNV3O9T4vVxk8PvLFHmI+R/BYA//cITh7vhRK37hWLZ4/kTcKcUz1dlWOpypIg==}
-    engines: {node: '>= 22'}
-
-  '@intlify/devtools-types@11.4.10':
-    resolution: {integrity: sha512-xZxzZsAuu6/0zoLRVQWdpXWe5Kjl0LnWpjlQA3r9u9FbLYMhapqt7IwkgQyn0Tm2GUNAqhj9eZiUmYOrB024BQ==}
-    engines: {node: '>= 22'}
-
-  '@intlify/message-compiler@11.4.10':
-    resolution: {integrity: sha512-oUB/scz2EJENXDiUJ7JjZffOrH8UIZ1BuZeHvonbi5fWLavLt04aivuk2OIByOZA0tsci1bkeeQRmwhb5M8Imw==}
-    engines: {node: '>= 22'}
-
-  '@intlify/shared@11.4.10':
-    resolution: {integrity: sha512-FeImVdPeoSHTm3NBFFZHv0eRP9gQ3F4lj2puDBX5Kw7iiM1uJW6JTf39ian0K/17pbXCI3ef5i9RVsRrALqI6Q==}
-    engines: {node: '>= 22'}
 
   '@jridgewell/gen-mapping@0.3.13':
     resolution: {integrity: sha512-2kkt/7niJ6MgEPxF0bYdQ6etZaA+fQvDcLKckhy1yIQOzaoKjBBjSj63/aLVjYE3qhRt5dvM+uUyfCg6UKCBbA==}
@@ -335,15 +295,6 @@ packages:
   '@rolldown/pluginutils@1.0.1':
     resolution: {integrity: sha512-2j9bGt5Jh8hj+vPtgzPtl72j0yRxHAyumoo6TNfAjsLB04UtpSvPbPcDcBMxz7n+9CYB0c1GxQFxYRg2jimqGw==}
 
-  '@schema-platform/platform-shared@file:../shared/platform-shared':
-    resolution: {directory: ../shared/platform-shared, type: directory}
-    peerDependencies:
-      element-plus: 2.14.2
-      vue: ^3.5.13
-
-  '@socket.io/component-emitter@3.1.2':
-    resolution: {integrity: sha512-9BCxFwvbGg/RsZK9tjXd8s4UcwR0MWeFQ1XEKIQVVvAGJyINdrqKMcTRyLoK8Rse1GjzLV9cwjWV1olXRWEXVA==}
-
   '@sxzz/popperjs-es@2.11.8':
     resolution: {integrity: sha512-wOwESXvvED3S8xBmcPWHs2dUuzrE4XiZeFu7e1hROIJkm02a49N120pmOXxY33sBb6hArItm5W5tcg1cBtV+HQ==}
 
@@ -410,9 +361,6 @@ packages:
 
   '@vue/compiler-ssr@3.5.42':
     resolution: {integrity: sha512-xmLk3wLkbizPAiLyomjgFFosf2ys9b5Ghb+oh/k2tnvipNz8OFrQOiTcWCzyK7MpBp9KkyGtfvgfLUivbmuGYA==}
-
-  '@vue/devtools-api@6.6.4':
-    resolution: {integrity: sha512-sGhTPMuXqZ1rVOk32RylztWkfXTRhuS7vgAKv0zjqk8gbsHkJ7xfFf+jbySxt7tWObEJwyKaHMikV/WGDiQm8g==}
 
   '@vue/devtools-api@8.2.1':
     resolution: {integrity: sha512-6u4vXBlIBAC1wMplIZgpyPn7uh/s4Bf6F5bMzvLv+EdJ0aHs/+4B7Ygv864EStQSjRbsRzTko/kUG1A1IejQ3A==}
@@ -542,13 +490,6 @@ packages:
     peerDependencies:
       vue: ^3.3.7
 
-  engine.io-client@6.6.6:
-    resolution: {integrity: sha512-iY6QdftLQ9pyiPoX082bpf/u1UewnOaJrtJIF9T0++QB34lZrj0uP+Q/bj8AlUsAxqhnkTV2BS8SBZSxOmoV5Q==}
-
-  engine.io-parser@5.2.3:
-    resolution: {integrity: sha512-HqD3yTBfnBxIrbnM1DoD6Pcq8NECnh8d4As1Qgh0z5Gg3jRRIqijury0CL3ghu/edArpUYiYqQiDUQBIs4np3Q==}
-    engines: {node: '>=10.0.0'}
-
   entities@7.0.1:
     resolution: {integrity: sha512-TWrgLOFUQTH994YUyl1yT4uyavY5nNB5muff+RtWaqNVCAK408b5ZnnbNAUEWLTCpum9w6arT70i1XdQ4UeOPA==}
     engines: {node: '>=0.12'}
@@ -642,9 +583,6 @@ packages:
 
   immutable@5.1.9:
     resolution: {integrity: sha512-m8nVez3rwrgmWxtLMt1ZYXB2Lv7OKYn/disyxAlSDYAlKSlFoPPfIAmAM/M5xqL4m4C/wAPw7S2/CNaUii1Hxg==}
-
-  import-html-entry@1.17.0:
-    resolution: {integrity: sha512-2SDsRlGlE8bqdnGqsOyiDPEWlzJR0jNW4LWopnZl5QE1Yd0nJ7fykWo2GaKUF7Jq7pR0g3dElhuJHyamTt1gPQ==}
 
   is-extglob@2.1.1:
     resolution: {integrity: sha512-SbKbANkN603Vi4jEZv49LeVJMn4yGwsbzZworEoyEiutsN3nJYdbO36zfhGJ6QEDpOZIFkDtnq5JRxmvl3jsoQ==}
@@ -815,15 +753,6 @@ packages:
     resolution: {integrity: sha512-qcJu88Q2IWqJsDD529JKMdwGm/dvInW4HvQnRwiH9JtihJvzGOscDtHE3x1pBKeUOTysQ8kVmLnJ2kJu7yhcGA==}
     engines: {node: '>=12'}
 
-  pinia@2.3.1:
-    resolution: {integrity: sha512-khUlZSwt9xXCaTbbxFYBKDc/bWAGWJjOgvxETwkTN7KRm66EeT1ZdZj6i2ceh9sP2Pzqsbc704r2yngBrxBVug==}
-    peerDependencies:
-      typescript: '>=4.4.4'
-      vue: ^2.7.0 || ^3.5.11
-    peerDependenciesMeta:
-      typescript:
-        optional: true
-
   pinia@4.0.3:
     resolution: {integrity: sha512-XMQqpvjgG7LMqVhhFUzKLT4KEbsYbfZZ0CZU9PgdFm1O2VKBmIkykL8+SfNhOaT7sR0wT6BEgKT0YNDYWgmVRA==}
     peerDependencies:
@@ -848,9 +777,6 @@ packages:
     resolution: {integrity: sha512-cJ+oHTW1VAEa8cJslgmUZrc+sjRKgAKl3Zyse6+PV38hZe/V6Z14TbCuXcan9F9ghlz4QrFr2c92TNF82UkYHA==}
     engines: {node: '>=10'}
 
-  qiankun@2.10.16:
-    resolution: {integrity: sha512-Q3tSVUrPnzx8ckEOKIoPnhb5LE28FPKyan/r6jEuGJGqTbIy+3rp6E2/KfU82ZI4yZpef9LFTrnxdj49jAEsmw==}
-
   quansync@0.2.11:
     resolution: {integrity: sha512-AifT7QEbW9Nri4tAwR5M/uzpBuqfZf+zwaEM/QkzEjj7NBuFD2rBuy0K3dE+8wltbezDV7JMA0WfnCPYRSYbXA==}
 
@@ -870,17 +796,6 @@ packages:
 
   scule@1.3.0:
     resolution: {integrity: sha512-6FtHJEvt+pVMIB9IBY+IcCJ6Z5f1iQnytgyfKMhDKgmzYG+TeH/wx1y3l27rshSbLiSanrR9ffZDrEsmjlQF2g==}
-
-  single-spa@5.9.5:
-    resolution: {integrity: sha512-9SQdmsyz4HSP+3gs6PJzhkaMEg+6zTlu9oxIghnwUX3eq+ajq4ft5egl0iyR55LAmO/UwvU8NgIWs/ZyQMa6dw==}
-
-  socket.io-client@4.8.3:
-    resolution: {integrity: sha512-uP0bpjWrjQmUt5DTHq9RuoCBdFJF10cdX9X+a368j/Ft0wmaVgxlrjvK3kjvgCODOMMOz9lcaRzxmso0bTWZ/g==}
-    engines: {node: '>=10.0.0'}
-
-  socket.io-parser@4.2.7:
-    resolution: {integrity: sha512-IH/iSeO9T6gz1KkFleGDWkG9N3dl4jXVYUtMhIqH10Md0ttMer8nUNWiP1DKuNrybD2xBrixLJdCC9J6ECoYkg==}
-    engines: {node: '>=10.0.0'}
 
   source-map-js@1.2.1:
     resolution: {integrity: sha512-UXWMKhLOwVKb728IUtQPXxfYU+usdybtUrK/8uGE8CQMvrhOpwvzDBwj0QhSL7MQc7vIsISBG8VQ8+IDQxpfQA==}
@@ -987,28 +902,6 @@ packages:
   vue-component-type-helpers@3.3.11:
     resolution: {integrity: sha512-LwcxzeliO9fkQcpJG0PoX8X5kmAhKmH9wkpDLxNabwzkQ9Zeib2YVHwFV4pcWmMLfXVfjr/dSV+DaJ3cIPgSNA==}
 
-  vue-demi@0.14.10:
-    resolution: {integrity: sha512-nMZBOwuzabUO0nLgIcc6rycZEebF6eeUfaiQx9+WSk8e29IbLvPU9feI6tqW4kTo3hvoYAJkMh8n8D0fuISphg==}
-    engines: {node: '>=12'}
-    hasBin: true
-    peerDependencies:
-      '@vue/composition-api': ^1.0.0-rc.1
-      vue: ^3.0.0-0 || ^2.6.0
-    peerDependenciesMeta:
-      '@vue/composition-api':
-        optional: true
-
-  vue-i18n@11.4.10:
-    resolution: {integrity: sha512-Lp+BjOxqzOY87DS6Z8KrQrpiTr9IN/Lt4kZEilwyXG2Wrx+AcU6IVsAW92HNXtVcn1HFFPV6ty41p9e/qDpyvg==}
-    engines: {node: '>= 22'}
-    peerDependencies:
-      vue: ^3.0.0
-
-  vue-router@4.6.4:
-    resolution: {integrity: sha512-Hz9q5sa33Yhduglwz6g9skT8OBPii+4bFn88w6J+J4MfEo4KRRpmiNG/hHHkdbRFlLBOqxN8y8gf2Fb0MTUgVg==}
-    peerDependencies:
-      vue: ^3.5.0
-
   vue-router@5.3.0:
     resolution: {integrity: sha512-a2PBXX9yfkS58JzSJALUffgDa09lEzKmCcEnLaepoIr88L+9hEnsgEQkcadJGID+vtHa0gFpVo064zmylA9fcg==}
     peerDependencies:
@@ -1044,22 +937,6 @@ packages:
   webpack-virtual-modules@0.6.2:
     resolution: {integrity: sha512-66/V2i5hQanC51vBQKPH4aI8NMAcBW59FVBs+rC7eGHupMyfn34q7rZIE+ETlJ+XTevqfUhVVBgSUNSW2flEUQ==}
 
-  ws@8.21.3:
-    resolution: {integrity: sha512-201TZ/kPWxoPr/OKWjquZR1SWKXcvxdH+e1xrx89b3YbmzLMFCLfnaG1HFIgWzJOEWZ7MvpK++odZufgYR50Rw==}
-    engines: {node: '>=10.0.0'}
-    peerDependencies:
-      bufferutil: ^4.0.1
-      utf-8-validate: '>=5.0.2'
-    peerDependenciesMeta:
-      bufferutil:
-        optional: true
-      utf-8-validate:
-        optional: true
-
-  xmlhttprequest-ssl@2.1.2:
-    resolution: {integrity: sha512-TEU+nJVUUnA4CYJFLvK5X9AOeH4KvDvhIfm0vV1GaQRtchnG0hgK5p8hw/xjv8cunWYCsiPCSDzObPyhEwq3KQ==}
-    engines: {node: '>=0.4.0'}
-
 snapshots:
 
   '@babel/helper-string-parser@7.29.7': {}
@@ -1069,8 +946,6 @@ snapshots:
   '@babel/parser@7.29.8':
     dependencies:
       '@babel/types': 7.29.8
-
-  '@babel/runtime@7.29.7': {}
 
   '@babel/types@7.29.8':
     dependencies:
@@ -1093,35 +968,6 @@ snapshots:
       '@floating-ui/utils': 0.2.12
 
   '@floating-ui/utils@0.2.12': {}
-
-  '@iconify-icons/ep@1.2.13':
-    dependencies:
-      '@iconify/types': 2.0.0
-
-  '@iconify/types@2.0.0': {}
-
-  '@iconify/vue@5.0.1(vue@3.5.42(typescript@5.7.3))':
-    dependencies:
-      '@iconify/types': 2.0.0
-      vue: 3.5.42(typescript@5.7.3)
-
-  '@intlify/core-base@11.4.10':
-    dependencies:
-      '@intlify/devtools-types': 11.4.10
-      '@intlify/message-compiler': 11.4.10
-      '@intlify/shared': 11.4.10
-
-  '@intlify/devtools-types@11.4.10':
-    dependencies:
-      '@intlify/core-base': 11.4.10
-      '@intlify/shared': 11.4.10
-
-  '@intlify/message-compiler@11.4.10':
-    dependencies:
-      '@intlify/shared': 11.4.10
-      source-map-js: 1.2.1
-
-  '@intlify/shared@11.4.10': {}
 
   '@jridgewell/gen-mapping@0.3.13':
     dependencies:
@@ -1248,29 +1094,6 @@ snapshots:
 
   '@rolldown/pluginutils@1.0.1': {}
 
-  '@schema-platform/platform-shared@file:../shared/platform-shared(element-plus@2.14.2(vue@3.5.42(typescript@5.7.3)))(typescript@5.7.3)(vue@3.5.42(typescript@5.7.3))':
-    dependencies:
-      '@element-plus/icons-vue': 2.3.2(vue@3.5.42(typescript@5.7.3))
-      '@iconify-icons/ep': 1.2.13
-      '@iconify/vue': 5.0.1(vue@3.5.42(typescript@5.7.3))
-      axios: 1.20.0
-      element-plus: 2.14.2(vue@3.5.42(typescript@5.7.3))
-      pinia: 2.3.1(typescript@5.7.3)(vue@3.5.42(typescript@5.7.3))
-      qiankun: 2.10.16
-      socket.io-client: 4.8.3
-      vue: 3.5.42(typescript@5.7.3)
-      vue-i18n: 11.4.10(vue@3.5.42(typescript@5.7.3))
-      vue-router: 4.6.4(vue@3.5.42(typescript@5.7.3))
-    transitivePeerDependencies:
-      - '@vue/composition-api'
-      - bufferutil
-      - debug
-      - supports-color
-      - typescript
-      - utf-8-validate
-
-  '@socket.io/component-emitter@3.1.2': {}
-
   '@sxzz/popperjs-es@2.11.8': {}
 
   '@types/js-yaml@4.0.9': {}
@@ -1374,8 +1197,6 @@ snapshots:
     dependencies:
       '@vue/compiler-dom': 3.5.42
       '@vue/shared': 3.5.42
-
-  '@vue/devtools-api@6.6.4': {}
 
   '@vue/devtools-api@8.2.1':
     dependencies:
@@ -1532,20 +1353,6 @@ snapshots:
       vue: 3.5.42(typescript@5.7.3)
       vue-component-type-helpers: 3.3.11
 
-  engine.io-client@6.6.6:
-    dependencies:
-      '@socket.io/component-emitter': 3.1.2
-      debug: 4.4.3
-      engine.io-parser: 5.2.3
-      ws: 8.21.3
-      xmlhttprequest-ssl: 2.1.2
-    transitivePeerDependencies:
-      - bufferutil
-      - supports-color
-      - utf-8-validate
-
-  engine.io-parser@5.2.3: {}
-
   entities@7.0.1: {}
 
   es-define-property@1.0.1: {}
@@ -1628,10 +1435,6 @@ snapshots:
       - supports-color
 
   immutable@5.1.9: {}
-
-  import-html-entry@1.17.0:
-    dependencies:
-      '@babel/runtime': 7.29.7
 
   is-extglob@2.1.1:
     optional: true
@@ -1760,16 +1563,6 @@ snapshots:
 
   picomatch@4.0.7: {}
 
-  pinia@2.3.1(typescript@5.7.3)(vue@3.5.42(typescript@5.7.3)):
-    dependencies:
-      '@vue/devtools-api': 6.6.4
-      vue: 3.5.42(typescript@5.7.3)
-      vue-demi: 0.14.10(vue@3.5.42(typescript@5.7.3))
-    optionalDependencies:
-      typescript: 5.7.3
-    transitivePeerDependencies:
-      - '@vue/composition-api'
-
   pinia@4.0.3(@vue/devtools-api@8.2.1)(typescript@5.7.3)(vue@3.5.42(typescript@5.7.3)):
     dependencies:
       '@vue/devtools-api': 8.2.1
@@ -1797,13 +1590,6 @@ snapshots:
       source-map-js: 1.2.1
 
   proxy-from-env@2.1.0: {}
-
-  qiankun@2.10.16:
-    dependencies:
-      '@babel/runtime': 7.29.7
-      import-html-entry: 1.17.0
-      lodash: 4.18.1
-      single-spa: 5.9.5
 
   quansync@0.2.11: {}
 
@@ -1839,26 +1625,6 @@ snapshots:
       '@parcel/watcher': 2.6.0
 
   scule@1.3.0: {}
-
-  single-spa@5.9.5: {}
-
-  socket.io-client@4.8.3:
-    dependencies:
-      '@socket.io/component-emitter': 3.1.2
-      debug: 4.4.3
-      engine.io-client: 6.6.6
-      socket.io-parser: 4.2.7
-    transitivePeerDependencies:
-      - bufferutil
-      - supports-color
-      - utf-8-validate
-
-  socket.io-parser@4.2.7:
-    dependencies:
-      '@socket.io/component-emitter': 3.1.2
-      debug: 4.4.3
-    transitivePeerDependencies:
-      - supports-color
 
   source-map-js@1.2.1: {}
 
@@ -1902,23 +1668,6 @@ snapshots:
   vscode-uri@3.2.0: {}
 
   vue-component-type-helpers@3.3.11: {}
-
-  vue-demi@0.14.10(vue@3.5.42(typescript@5.7.3)):
-    dependencies:
-      vue: 3.5.42(typescript@5.7.3)
-
-  vue-i18n@11.4.10(vue@3.5.42(typescript@5.7.3)):
-    dependencies:
-      '@intlify/core-base': 11.4.10
-      '@intlify/devtools-types': 11.4.10
-      '@intlify/shared': 11.4.10
-      '@vue/devtools-api': 6.6.4
-      vue: 3.5.42(typescript@5.7.3)
-
-  vue-router@4.6.4(vue@3.5.42(typescript@5.7.3)):
-    dependencies:
-      '@vue/devtools-api': 6.6.4
-      vue: 3.5.42(typescript@5.7.3)
 
   vue-router@5.3.0(@vue/compiler-sfc@3.5.42)(pinia@4.0.3(@vue/devtools-api@8.2.1)(typescript@5.7.3)(vue@3.5.42(typescript@5.7.3)))(rolldown@1.2.6)(vite@8.2.2(@types/node@26.4.0)(sass@1.103.1))(vue@3.5.42(typescript@5.7.3)):
     dependencies:
@@ -1970,7 +1719,3 @@ snapshots:
       typescript: 5.7.3
 
   webpack-virtual-modules@0.6.2: {}
-
-  ws@8.21.3: {}
-
-  xmlhttprequest-ssl@2.1.2: {}

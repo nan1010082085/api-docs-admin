@@ -47,7 +47,7 @@
 
 <script setup lang="ts">
 import { reactive, watch } from 'vue'
-import AppIcon from '@schema-platform/platform-shared/components/common/AppIcon.vue'
+import AppIcon from '@/components/AppIcon.vue'
 import { useDocsStore } from '@/stores/docs'
 import MethodBadge from './MethodBadge.vue'
 import type { ApiEndpoint } from '@/types'

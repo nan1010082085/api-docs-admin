@@ -1,5 +1,5 @@
 {
-  "name": "@schema-platform/api-docs",
+  "name": "@api-docs",
   "version": "1.0.0",
   "private": true,
   "type": "module",
@@ -13,9 +13,6 @@
   },
   "dependencies": {
     "@element-plus/icons-vue": "^2.3.1",
-    "@iconify-icons/ep": "^1.2.13",
-    "@iconify/vue": "^5.0.1",
-    "@schema-platform/platform-shared": "file:../shared/platform-shared",
     "axios": "^1.18.1",
     "element-plus": "2.14.2",
     "highlight.js": "^11.12.0",

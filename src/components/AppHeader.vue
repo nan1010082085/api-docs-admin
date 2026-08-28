@@ -67,50 +67,62 @@
 
     <AppDialog
       v-model="authVisible"
-      title="环境认证"
-      width="480px"
+      title="环境变量 / 认证"
+      width="640px"
       :show-fullscreen-btn="false"
       @confirm="saveAuth"
     >
-      <el-form label-width="100px">
-        <el-form-item label="认证方式">
-          <el-radio-group v-model="authForm.authType" size="small">
-            <el-radio-button value="bearer">Bearer Token</el-radio-button>
-            <el-radio-button value="apiKey">API Key</el-radio-button>
-            <el-radio-button value="none">无</el-radio-button>
-          </el-radio-group>
-        </el-form-item>
-        <el-form-item v-if="authForm.authType === 'bearer'" label="Token">
-          <el-input
-            v-model="authForm.token"
-            type="password"
-            show-password
-            placeholder="粘贴 JWT（不含 Bearer 前缀）"
-          />
-        </el-form-item>
-        <el-form-item v-if="authForm.authType === 'apiKey'" label="API Key">
-          <el-input
-            v-model="authForm.apiKey"
-            type="password"
-            show-password
-            placeholder="sk-xxx"
-          />
-        </el-form-item>
-        <el-form-item label="Cookie">
-          <el-input
-            v-model="authForm.cookie"
-            type="textarea"
-            :rows="2"
-            placeholder="可选，key=value; ..."
-          />
-        </el-form-item>
-        <el-alert
-          type="info"
-          :closable="false"
-          show-icon
-          title="登录接口发送成功后会自动写入 Token。推荐使用「本地代理」环境避免 CORS。"
-        />
-      </el-form>
+      <div class="auth-form">
+        <el-tabs v-model="authTab" class="auth-tabs">
+          <el-tab-pane label="常用" name="preset">
+            <el-form label-width="88px" label-position="right">
+              <el-form-item label="Token">
+                <el-input
+                  v-model="authForm.token"
+                  size="small"
+                  type="password"
+                  show-password
+                  placeholder="有值则自动带 Authorization: Bearer …"
+                />
+              </el-form-item>
+              <el-form-item label="API Key">
+                <el-input
+                  v-model="authForm.apiKey"
+                  size="small"
+                  type="password"
+                  show-password
+                  placeholder="有值则自动带 X-API-Key"
+                />
+              </el-form-item>
+              <el-form-item label="Cookie">
+                <el-input
+                  v-model="authForm.cookie"
+                  size="small"
+                  type="textarea"
+                  :rows="2"
+                  placeholder="可选，key=value; ..."
+                />
+              </el-form-item>
+            </el-form>
+            <p class="auth-hint">填了什么就固定传什么，可同时启用。更多自定义字段用 Header / Query / Body。</p>
+          </el-tab-pane>
+
+          <el-tab-pane label="Header" name="header">
+            <EnvKvTable v-model="authForm.headerRows" key-placeholder="Header 名" value-placeholder="值" />
+            <p class="auth-hint">发送时自动附加到请求头（可与快捷认证叠加）。</p>
+          </el-tab-pane>
+
+          <el-tab-pane label="Query" name="query">
+            <EnvKvTable v-model="authForm.queryRows" key-placeholder="参数名" value-placeholder="参数值" />
+            <p class="auth-hint">作为当前环境的固定 Query，合并进每个请求的 URL。</p>
+          </el-tab-pane>
+
+          <el-tab-pane label="Body" name="body">
+            <EnvKvTable v-model="authForm.bodyRows" key-placeholder="字段名" value-placeholder="字段值" />
+            <p class="auth-hint">作为 Body 固定字段：JSON 会 merge 进对象；form / form-data 会作为字段预填。</p>
+          </el-tab-pane>
+        </el-tabs>
+      </div>
       <template #footer>
         <el-button @click="authVisible = false">取消</el-button>
         <el-button type="primary" @click="saveAuth">保存</el-button>
@@ -123,44 +135,57 @@
 import { ref, computed, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import AppDialog from '@schema-platform/platform-shared/components/common/AppDialog.vue'
-import AppIcon from '@schema-platform/platform-shared/components/common/AppIcon.vue'
+import AppDialog from '@/components/AppDialog.vue'
+import AppIcon from '@/components/AppIcon.vue'
 import { useDocsStore } from '@/stores/docs'
 import { downloadOpenApiJson } from '@/utils/export'
-import type { AuthType } from '@/types'
+import type { EnvKvRow } from '@/types'
+import EnvKvTable from './EnvKvTable.vue'
 
 const store = useDocsStore()
 const router = useRouter()
 const route = useRoute()
 const search = ref('')
 const authVisible = ref(false)
+const authTab = ref('preset')
 
 const environments = computed(() => store.activeProject?.config.environments ?? [])
 
 const authForm = ref({
-  authType: 'bearer' as AuthType,
   token: '',
   apiKey: '',
   cookie: '',
+  headerRows: [] as EnvKvRow[],
+  queryRows: [] as EnvKvRow[],
+  bodyRows: [] as EnvKvRow[],
 })
 
 const authSummary = computed(() => {
   const env = store.activeEnvironment
   if (!env) return ''
-  const type = env.authType ?? 'bearer'
-  if (type === 'bearer' && env.token) return 'Token 已配置'
-  if (type === 'apiKey' && env.apiKey) return 'API Key 已配置'
-  return ''
+  const parts: string[] = []
+  if (env.token?.trim()) parts.push('Token')
+  if (env.apiKey?.trim()) parts.push('API Key')
+  if (env.cookie?.trim()) parts.push('Cookie')
+  const extra =
+    (env.headerRows?.filter((r) => r.enabled && r.key).length ?? 0) +
+    (env.queryRows?.filter((r) => r.enabled && r.key).length ?? 0) +
+    (env.bodyRows?.filter((r) => r.enabled && r.key).length ?? 0)
+  if (extra) parts.push(`${extra} 自定义`)
+  return parts.length ? parts.join(' · ') : ''
 })
 
 watch(authVisible, (open) => {
   if (!open) return
   const env = store.activeEnvironment
+  authTab.value = 'preset'
   authForm.value = {
-    authType: env?.authType ?? 'bearer',
     token: env?.token ?? '',
     apiKey: env?.apiKey ?? '',
     cookie: env?.cookie ?? '',
+    headerRows: structuredClone(env?.headerRows ?? []),
+    queryRows: structuredClone(env?.queryRows ?? []),
+    bodyRows: structuredClone(env?.bodyRows ?? []),
   }
 })
 
@@ -181,13 +206,15 @@ function onEnvChange(index: number) {
 
 function saveAuth() {
   store.updateActiveEnv({
-    authType: authForm.value.authType,
     token: authForm.value.token,
     apiKey: authForm.value.apiKey,
     cookie: authForm.value.cookie,
+    headerRows: authForm.value.headerRows,
+    queryRows: authForm.value.queryRows,
+    bodyRows: authForm.value.bodyRows,
   })
   authVisible.value = false
-  ElMessage.success('认证已保存到当前环境')
+  ElMessage.success('已保存到当前环境')
 }
 
 function handleExport() {
@@ -257,5 +284,34 @@ watch(
 
 .search-input {
   width: 240px;
+}
+
+.auth-form {
+  width: 100%;
+  /* 避免 dialog overflow 裁掉控件顶边框 */
+  padding: 2px;
+}
+
+.auth-tabs {
+  :deep(.el-tabs__header) {
+    margin-bottom: 12px;
+  }
+
+  :deep(.el-form-item__content) {
+    flex: 1;
+    min-width: 0;
+  }
+
+  :deep(.el-input),
+  :deep(.el-textarea) {
+    width: 100%;
+  }
+}
+
+.auth-hint {
+  margin-top: 10px;
+  font-size: 12px;
+  color: #909399;
+  line-height: 1.5;
 }
 </style>

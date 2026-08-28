@@ -35,97 +35,80 @@
       <el-tag v-if="endpoint.deprecated" type="danger" size="small">已废弃</el-tag>
     </div>
 
-    <!-- 分栏视图 -->
+    <!-- 分栏视图：单层面板，不再套多余 card-header -->
     <div v-if="viewMode === 'split'" class="detail-grid">
-      <div class="detail-card">
-        <div class="card-header">
-          <span>请求参数</span>
-        </div>
-        <div class="card-body">
-          <el-tabs v-model="activeTab" class="detail-tabs">
-            <el-tab-pane label="请求参数" name="params">
-              <ParamTable v-if="pathParams.length" title="路径参数" :params="pathParams" />
-              <ParamTable v-if="queryParams.length" title="查询参数" :params="queryParams" />
-              <ParamTable v-if="headerParams.length" title="请求头" :params="headerParams" />
-              <el-empty v-if="!pathParams.length && !queryParams.length && !headerParams.length" description="无参数" :image-size="48" />
-            </el-tab-pane>
+      <div class="detail-panel">
+        <el-tabs v-model="activeTab" class="detail-tabs">
+          <el-tab-pane label="请求参数" name="params">
+            <ParamTable v-if="pathParams.length" title="路径参数" :params="pathParams" />
+            <ParamTable v-if="queryParams.length" title="查询参数" :params="queryParams" />
+            <ParamTable v-if="headerParams.length" title="请求头" :params="headerParams" />
+            <el-empty v-if="!pathParams.length && !queryParams.length && !headerParams.length" description="无参数" :image-size="48" />
+          </el-tab-pane>
 
-            <el-tab-pane label="请求体" name="body">
-              <div v-if="endpoint.requestBody" class="body-section">
-                <div v-if="endpoint.requestBody.description" class="markdown-body" v-html="renderMarkdown(endpoint.requestBody.description)" />
-                <div v-for="(media, mediaType) in endpoint.requestBody.content" :key="mediaType" class="media-section">
-                  <el-tag size="small" type="info">{{ mediaType }}</el-tag>
-                  <SchemaViewer v-if="media.schema" :schema="media.schema" />
-                  <div v-if="media.example" class="example-block">
-                    <h5>示例</h5>
-                    <pre><code>{{ formatJson(media.example) }}</code></pre>
-                  </div>
+          <el-tab-pane label="请求体" name="body">
+            <div v-if="endpoint.requestBody" class="body-section">
+              <div v-if="endpoint.requestBody.description" class="markdown-body" v-html="renderMarkdown(endpoint.requestBody.description)" />
+              <div v-for="(media, mediaType) in endpoint.requestBody.content" :key="mediaType" class="media-section">
+                <el-tag size="small" type="info">{{ mediaType }}</el-tag>
+                <SchemaViewer v-if="media.schema" :schema="media.schema" />
+                <div v-if="media.example" class="example-block">
+                  <h5>示例</h5>
+                  <pre><code>{{ formatJson(media.example) }}</code></pre>
                 </div>
               </div>
-              <el-empty v-else description="无请求体" :image-size="48" />
-            </el-tab-pane>
+            </div>
+            <el-empty v-else description="无请求体" :image-size="48" />
+          </el-tab-pane>
 
-            <el-tab-pane label="响应" name="responses">
-              <div v-if="endpoint.responses && Object.keys(endpoint.responses).length">
-                <div v-for="(resp, statusCode) in endpoint.responses" :key="statusCode" class="response-section">
-                  <h4>
-                    <span :class="statusClass(statusCode)">{{ statusCode }}</span>
-                    <span v-if="resp.description" class="resp-desc">{{ resp.description }}</span>
-                  </h4>
-                  <div v-if="resp.content">
-                    <div v-for="(media, mediaType) in resp.content" :key="mediaType" class="media-section">
-                      <el-tag size="small" type="info">{{ mediaType }}</el-tag>
-                      <SchemaViewer v-if="media.schema" :schema="media.schema" />
-                      <div v-if="media.example" class="example-block">
-                        <h5>示例</h5>
-                        <pre><code>{{ formatJson(media.example) }}</code></pre>
-                      </div>
+          <el-tab-pane label="响应" name="responses">
+            <div v-if="endpoint.responses && Object.keys(endpoint.responses).length">
+              <div v-for="(resp, statusCode) in endpoint.responses" :key="statusCode" class="response-section">
+                <h4>
+                  <span :class="statusClass(statusCode)">{{ statusCode }}</span>
+                  <span v-if="resp.description" class="resp-desc">{{ resp.description }}</span>
+                </h4>
+                <div v-if="resp.content">
+                  <div v-for="(media, mediaType) in resp.content" :key="mediaType" class="media-section">
+                    <el-tag size="small" type="info">{{ mediaType }}</el-tag>
+                    <SchemaViewer v-if="media.schema" :schema="media.schema" />
+                    <div v-if="media.example" class="example-block">
+                      <h5>示例</h5>
+                      <pre><code>{{ formatJson(media.example) }}</code></pre>
                     </div>
                   </div>
                 </div>
               </div>
-              <el-empty v-else description="无响应定义" :image-size="48" />
-            </el-tab-pane>
+            </div>
+            <el-empty v-else description="无响应定义" :image-size="48" />
+          </el-tab-pane>
 
-            <el-tab-pane v-if="endpoint.security?.length" label="认证" name="auth">
-              <p class="auth-info">此接口需要认证。支持：</p>
-              <ul>
-                <li v-for="(_, idx) in endpoint.security" :key="idx">
-                  <el-tag size="small">Bearer Token</el-tag> 或 <el-tag size="small">API Key</el-tag>
-                </li>
-              </ul>
-            </el-tab-pane>
-          </el-tabs>
-        </div>
+          <el-tab-pane v-if="endpoint.security?.length" label="认证" name="auth">
+            <p class="auth-info">此接口需要认证。支持：</p>
+            <ul>
+              <li v-for="(_, idx) in endpoint.security" :key="idx">
+                <el-tag size="small">Bearer Token</el-tag> 或 <el-tag size="small">API Key</el-tag>
+              </li>
+            </ul>
+          </el-tab-pane>
+        </el-tabs>
       </div>
 
-      <div class="detail-card">
-        <div class="card-header">
-          <span>在线测试</span>
-        </div>
-        <div class="card-body">
-          <TryItOut :endpoint="endpoint" />
-        </div>
+      <div class="detail-panel">
+        <TryItOut :endpoint="endpoint" />
       </div>
     </div>
 
     <!-- 测试视图（全宽） -->
-    <div v-else class="detail-full">
-      <div class="detail-card">
-        <div class="card-header">
-          <span>在线测试</span>
-        </div>
-        <div class="card-body">
-          <TryItOut :endpoint="endpoint" />
-        </div>
-      </div>
+    <div v-else class="detail-panel detail-full">
+      <TryItOut :endpoint="endpoint" />
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-import AppIcon from '@schema-platform/platform-shared/components/common/AppIcon.vue'
+import AppIcon from '@/components/AppIcon.vue'
 import type { ApiEndpoint } from '@/types'
 import { renderMarkdown } from '@/utils/markdown'
 import MethodBadge from './MethodBadge.vue'
@@ -222,33 +205,16 @@ function formatJson(val: unknown): string {
   width: 100%;
 }
 
-// 卡片
-.detail-card {
+/** 单层面板：白底描边，不再套 card-header */
+.detail-panel {
   background: #fff;
   border: 1px solid #e4e7ed;
   border-radius: 8px;
+  padding: 16px;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
-}
-
-.card-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 12px 16px;
-  background: #f5f7fa;
-  border-bottom: 1px solid #e4e7ed;
-  font-weight: 600;
-  font-size: 14px;
-  color: #303133;
-  flex-shrink: 0;
-}
-
-.card-body {
-  padding: 16px;
-  flex: 1;
   overflow: auto;
+  min-height: 0;
 }
 
 .detail-tabs {

@@ -2,7 +2,7 @@
   <aside class="sidebar">
     <el-scrollbar>
       <div v-if="store.loading" class="sidebar-loading">
-        <el-icon class="is-loading"><Loading /></el-icon>
+        <AppIcon name="loading" :size="16" class="is-loading" />
         <span>加载中...</span>
       </div>
 
@@ -13,7 +13,7 @@
       <div v-else class="sidebar-groups">
         <div v-for="group in store.filteredGroups" :key="group.name" class="group">
           <div class="group-header" @click="toggleGroup(group.name)">
-            <el-icon><ArrowRight v-if="!expanded[group.name]" /><ArrowDown v-else /></el-icon>
+            <AppIcon :name="expanded[group.name] ? 'arrow-down' : 'arrow-right'" :size="12" />
             <span class="group-name">{{ group.name }}</span>
             <el-tag size="small" type="info">{{ group.endpoints.length }}</el-tag>
           </div>
@@ -47,7 +47,7 @@
 
 <script setup lang="ts">
 import { reactive, watch } from 'vue'
-import { Loading, ArrowRight, ArrowDown } from '@element-plus/icons-vue'
+import AppIcon from '@schema-platform/platform-shared/components/common/AppIcon.vue'
 import { useDocsStore } from '@/stores/docs'
 import MethodBadge from './MethodBadge.vue'
 import type { ApiEndpoint } from '@/types'
@@ -111,6 +111,15 @@ watch(
   align-items: center;
   gap: 8px;
   color: #909399;
+
+  .is-loading {
+    animation: rotating 1.5s linear infinite;
+  }
+}
+
+@keyframes rotating {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
 
 .sidebar-groups {
@@ -134,11 +143,6 @@ watch(
 
   &:hover {
     background: #f5f7fa;
-  }
-
-  .el-icon {
-    font-size: 12px;
-    color: #909399;
   }
 }
 

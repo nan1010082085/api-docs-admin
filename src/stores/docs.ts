@@ -172,18 +172,27 @@ export const useDocsStore = defineStore('docs', () => {
         .filter((r): r is PromiseFulfilledResult<ProjectData> => r.status === 'fulfilled')
         .map((r) => r.value)
 
-      if (projects.value.length > 0 && !activeProjectId.value) {
+      const failed = results.filter((r): r is PromiseRejectedResult => r.status === 'rejected')
+      if (failed.length > 0) {
+        console.warn(
+          '部分项目加载失败:',
+          failed.map((f) => f.reason),
+        )
+      }
+
+      if (projects.value.length === 0) {
+        error.value =
+          failed[0]?.reason instanceof Error
+            ? failed[0].reason.message
+            : '全部项目加载失败，请检查 specs 路径与 BASE_URL'
+        return
+      }
+
+      if (!activeProjectId.value || !projects.value.some((p) => p.config.id === activeProjectId.value)) {
         activeProjectId.value = projects.value[0].config.id
       }
 
-      if (activeProjectId.value) {
-        restoreForProject(activeProjectId.value)
-      }
-
-      const failed = results.filter((r) => r.status === 'rejected')
-      if (failed.length > 0) {
-        console.warn('部分项目加载失败:', failed)
-      }
+      restoreForProject(activeProjectId.value)
     } catch (e) {
       error.value = (e as Error).message
     } finally {

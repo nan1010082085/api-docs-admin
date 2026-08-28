@@ -1,15 +1,17 @@
+import 'element-plus/dist/index.css'
+import '@schema-platform/platform-shared/styles/theme.scss'
+import '@schema-platform/platform-shared/styles/css-variables.scss'
+import 'highlight.js/styles/github.css'
+import './styles/index.scss'
+
 import { createApp } from 'vue'
 import { createPinia } from 'pinia'
-import ElementPlus from 'element-plus'
-import 'element-plus/dist/index.css'
-import 'highlight.js/styles/github.css'
-import '@schema-platform/platform-shared/styles/theme.scss'
+import { setupElementPlus } from '@schema-platform/platform-shared/config/element'
 import App from './App.vue'
 import router from './router'
-import './styles/index.scss'
 
 const app = createApp(App)
 app.use(createPinia())
 app.use(router)
-app.use(ElementPlus)
+setupElementPlus(app)
 app.mount('#app')

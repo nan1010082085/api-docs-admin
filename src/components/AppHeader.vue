@@ -4,6 +4,7 @@
       <h1 class="logo">API Docs</h1>
       <el-select
         :model-value="store.activeProjectId"
+        size="small"
         class="project-select"
         placeholder="选择项目"
         @change="onProjectChange"
@@ -17,6 +18,7 @@
       </el-select>
       <el-select
         :model-value="store.activeEnvIndex"
+        size="small"
         class="env-select"
         placeholder="测试环境"
         @change="onEnvChange"
@@ -32,6 +34,7 @@
       <el-input
         v-if="store.activeEnvIndex === -1"
         v-model="store.customBaseUrl"
+        size="small"
         placeholder="自定义地址，如 http://localhost:3001"
         class="custom-url-input"
         clearable
@@ -46,13 +49,20 @@
     <div class="header-right">
       <el-input
         v-model="search"
+        size="small"
         placeholder="搜索接口路径或描述..."
         clearable
-        :prefix-icon="Search"
         class="search-input"
         @input="onSearch"
-      />
-      <el-button :icon="Download" @click="handleExport">导出 JSON</el-button>
+      >
+        <template #prefix>
+          <AppIcon name="search" :size="14" />
+        </template>
+      </el-input>
+      <el-button size="small" @click="handleExport">
+        <AppIcon name="download" :size="14" style="margin-right: 4px" />
+        导出 JSON
+      </el-button>
     </div>
 
     <AppDialog
@@ -64,7 +74,7 @@
     >
       <el-form label-width="100px">
         <el-form-item label="认证方式">
-          <el-radio-group v-model="authForm.authType" class="auth-radios">
+          <el-radio-group v-model="authForm.authType" size="small">
             <el-radio-button value="bearer">Bearer Token</el-radio-button>
             <el-radio-button value="apiKey">API Key</el-radio-button>
             <el-radio-button value="none">无</el-radio-button>
@@ -112,9 +122,9 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { Download, Search } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import AppDialog from '@schema-platform/platform-shared/components/common/AppDialog.vue'
+import AppIcon from '@schema-platform/platform-shared/components/common/AppIcon.vue'
 import { useDocsStore } from '@/stores/docs'
 import { downloadOpenApiJson } from '@/utils/export'
 import type { AuthType } from '@/types'
@@ -247,13 +257,5 @@ watch(
 
 .search-input {
   width: 240px;
-}
-
-.auth-radios {
-  :deep(.el-radio-button__inner) {
-    height: 32px;
-    line-height: 30px;
-    padding: 0 14px;
-  }
 }
 </style>

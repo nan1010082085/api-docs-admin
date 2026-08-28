@@ -36,6 +36,11 @@ const ready = ref(false)
 
 onMounted(async () => {
   await store.loadAllProjects()
+  // 深链 F5：优先用路由里的 projectId
+  const routeProjectId = route.params.projectId as string | undefined
+  if (routeProjectId && store.projects.some((p) => p.config.id === routeProjectId)) {
+    store.setActiveProject(routeProjectId)
+  }
   ready.value = true
   syncFromRoute()
 })

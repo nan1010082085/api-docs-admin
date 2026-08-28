@@ -11,6 +11,12 @@ importers:
       '@element-plus/icons-vue':
         specifier: ^2.3.1
         version: 2.3.2(vue@3.5.42(typescript@5.7.3))
+      '@iconify-icons/ep':
+        specifier: ^1.2.13
+        version: 1.2.13
+      '@iconify/vue':
+        specifier: ^5.0.1
+        version: 5.0.1(vue@3.5.42(typescript@5.7.3))
       '@schema-platform/platform-shared':
         specifier: file:../shared/platform-shared
         version: file:../shared/platform-shared(element-plus@2.14.2(vue@3.5.42(typescript@5.7.3)))(typescript@5.7.3)(vue@3.5.42(typescript@5.7.3))

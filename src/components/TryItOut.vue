@@ -1,20 +1,29 @@
 <template>
   <div class="try-it-out">
     <div class="try-title">
-      <el-icon><Promotion /></el-icon>
+      <AppIcon name="promotion" :size="18" />
       <span>在线测试</span>
       <div class="try-actions">
-        <el-button :icon="DocumentCopy" @click="copyCurl">复制 cURL</el-button>
+        <el-button size="small" @click="copyCurl">
+          <AppIcon name="document-copy" :size="14" style="margin-right: 4px" />
+          复制 cURL
+        </el-button>
       </div>
     </div>
 
     <div class="try-url-bar">
-      <el-input :model-value="displayBaseUrl" placeholder="请求前缀（空=同源代理）" class="base-url-input" @update:model-value="onBaseUrlChange">
+      <el-input
+        :model-value="displayBaseUrl"
+        size="small"
+        placeholder="请求前缀（空=同源代理）"
+        class="base-url-input"
+        @update:model-value="onBaseUrlChange"
+      >
         <template #prepend>
           <span class="method-text" :class="`method-${endpoint.method}`">{{ endpoint.method.toUpperCase() }}</span>
         </template>
       </el-input>
-      <el-button type="primary" :loading="sending" class="send-btn" @click="sendRequest">发送</el-button>
+      <el-button type="primary" size="small" :loading="sending" class="send-btn" @click="sendRequest">发送</el-button>
     </div>
 
     <div class="url-preview">
@@ -48,7 +57,7 @@
                 <span v-if="row.required" class="required">*</span>
               </span>
               <div class="col-value">
-                <el-input v-model="row.value" :placeholder="row.type || 'string'" />
+                <el-input v-model="row.value" size="small" :placeholder="row.type || 'string'" />
               </div>
               <span class="col-type">{{ row.type }}</span>
               <span class="col-desc">{{ row.description }}</span>
@@ -59,7 +68,7 @@
         <div class="param-block">
           <div class="param-block-title">
             <span>Query 参数</span>
-            <el-button text type="primary" @click="addQueryRow">+ 添加</el-button>
+            <el-button text type="primary" size="small" @click="addQueryRow">+ 添加</el-button>
           </div>
           <div class="params-table query-table">
             <div class="params-header">
@@ -79,7 +88,8 @@
                 <el-input
                   v-if="!row.fromSpec"
                   v-model="row.name"
-                  placeholder="name"
+                  size="small"
+                  placeholder="参数名"
                 />
                 <template v-else>
                   {{ row.name }}
@@ -87,17 +97,19 @@
                 </template>
               </div>
               <div class="col-value">
-                <el-input v-model="row.value" :placeholder="row.type || 'value'" />
+                <el-input v-model="row.value" size="small" :placeholder="row.type || '参数值'" />
               </div>
               <span class="col-type">{{ row.type || 'string' }}</span>
               <span class="col-desc">{{ row.description }}</span>
               <span class="col-action">
                 <el-button
                   v-if="!row.fromSpec || !row.required"
-                  :icon="Delete"
                   circle
+                  size="small"
                   @click="queryRows.splice(idx, 1)"
-                />
+                >
+                  <AppIcon name="delete" :size="14" />
+                </el-button>
               </span>
             </div>
           </div>
@@ -112,27 +124,27 @@
         </template>
 
         <div v-if="!supportsBody && !hasRequestBody" class="body-none">
-          <el-radio-group v-model="bodyNone" class="mode-radios">
+          <el-radio-group v-model="bodyNone" size="small">
             <el-radio-button :value="true">none</el-radio-button>
           </el-radio-group>
           <p class="field-hint">当前方法默认无请求体。如需自定义可切换 Content-Type 后编辑。</p>
-          <el-button @click="forceEnableBody">启用 Body</el-button>
+          <el-button size="small" @click="forceEnableBody">启用 Body</el-button>
         </div>
 
         <template v-else>
           <div class="body-toolbar">
-            <el-radio-group v-model="bodyMode" class="mode-radios">
+            <el-radio-group v-model="bodyMode" size="small">
               <el-radio-button value="form" :disabled="!canUseFormMode">表单</el-radio-button>
               <el-radio-button value="raw">JSON / Raw</el-radio-button>
               <el-radio-button value="formdata">form-data</el-radio-button>
             </el-radio-group>
-            <el-select v-model="selectedContentType" class="content-type-select">
+            <el-select v-model="selectedContentType" size="small" class="content-type-select">
               <el-option label="application/json" value="application/json" />
               <el-option label="multipart/form-data" value="multipart/form-data" />
               <el-option label="application/x-www-form-urlencoded" value="application/x-www-form-urlencoded" />
               <el-option label="text/plain" value="text/plain" />
             </el-select>
-            <el-button @click="fillExample">填入示例</el-button>
+            <el-button size="small" @click="fillExample">填入示例</el-button>
           </div>
 
           <!-- 表单模式：按 schema properties 逐项录入 -->
@@ -166,6 +178,7 @@
                 <el-input
                   v-else
                   v-model="field.value"
+                  size="small"
                   :placeholder="field.placeholder"
                   :type="field.type === 'object' || field.type === 'array' ? 'textarea' : 'text'"
                   :rows="field.type === 'object' || field.type === 'array' ? 3 : 1"
@@ -208,7 +221,8 @@
                   <el-input
                     v-if="!field.fromSpec"
                     v-model="field.name"
-                    placeholder="name"
+                    size="small"
+                    placeholder="字段名"
                   />
                   <template v-else>
                     {{ field.name }}
@@ -216,7 +230,7 @@
                   </template>
                 </div>
                 <div class="col-kind">
-                  <el-select v-model="field.type" class="kind-select" @change="onFormDataTypeChange(field)">
+                  <el-select v-model="field.type" size="small" class="kind-select" @change="onFormDataTypeChange(field)">
                     <el-option label="文本" value="text" />
                     <el-option label="文件" value="file" />
                   </el-select>
@@ -225,16 +239,19 @@
                   <el-input
                     v-if="field.type === 'text'"
                     v-model="field.value"
-                    placeholder="value"
+                    size="small"
+                    placeholder="字段值"
                   />
                   <div v-else class="file-field">
                     <el-upload
                       :auto-upload="false"
                       :show-file-list="false"
-                      :accept="field.accept"
+                      :accept="field.accept || undefined"
                       :on-change="(f: UploadFile) => handleFileChange(idx, f)"
                     >
-                      <el-button>{{ field.fileName || (field.accept.startsWith('image') ? '选择图片' : '选择文件') }}</el-button>
+                      <el-button size="small">
+                        {{ field.fileName || (field.accept.startsWith('image') ? '选择图片' : '选择文件') }}
+                      </el-button>
                     </el-upload>
                     <div v-if="field.file" class="file-meta">
                       <img
@@ -247,7 +264,7 @@
                         <span class="file-name" :title="field.fileName">{{ field.fileName }}</span>
                         <span class="file-size">{{ formatSize(field.file.size) }}</span>
                       </div>
-                      <el-button text type="danger" @click="clearFormDataFile(idx)">清除</el-button>
+                      <el-button text type="danger" size="small" @click="clearFormDataFile(idx)">清除</el-button>
                     </div>
                   </div>
                 </div>
@@ -255,14 +272,16 @@
                 <span class="col-action">
                   <el-button
                     v-if="!field.fromSpec || !field.required"
-                    :icon="Delete"
                     circle
+                    size="small"
                     @click="removeFormDataField(idx)"
-                  />
+                  >
+                    <AppIcon name="delete" :size="14" />
+                  </el-button>
                 </span>
               </div>
             </div>
-            <el-button class="add-btn" @click="addFormDataField">+ 添加字段</el-button>
+            <el-button class="add-btn" size="small" @click="addFormDataField">+ 添加字段</el-button>
             <p class="field-hint">multipart 发送时由浏览器自动带 boundary，不会手写 Content-Type。</p>
           </div>
 
@@ -275,11 +294,13 @@
         <div class="kv-table">
           <div v-for="(row, idx) in headerRows" :key="idx" class="kv-row">
             <el-checkbox v-model="row.enabled" />
-            <el-input v-model="row.name" placeholder="Header Name" />
-            <el-input v-model="row.value" placeholder="Value" />
-            <el-button :icon="Delete" circle @click="headerRows.splice(idx, 1)" />
+            <el-input v-model="row.name" size="small" placeholder="Header Name" />
+            <el-input v-model="row.value" size="small" placeholder="Value" />
+            <el-button circle size="small" @click="headerRows.splice(idx, 1)">
+              <AppIcon name="delete" :size="14" />
+            </el-button>
           </div>
-          <el-button class="add-btn" @click="headerRows.push({ enabled: true, name: '', value: '' })">
+          <el-button class="add-btn" size="small" @click="headerRows.push({ enabled: true, name: '', value: '' })">
             + 添加请求头
           </el-button>
         </div>
@@ -323,9 +344,9 @@
 
 <script setup lang="ts">
 import { ref, computed, watch, onBeforeUnmount } from 'vue'
-import { Delete, Promotion, DocumentCopy } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import type { UploadFile } from 'element-plus'
+import AppIcon from '@schema-platform/platform-shared/components/common/AppIcon.vue'
 import { useDocsStore } from '@/stores/docs'
 import { buildCurlCommand } from '@/utils/curl'
 import {
@@ -425,9 +446,23 @@ const supportsBody = computed(() =>
 const bodySchema = computed((): JsonSchema | undefined => {
   const content = props.endpoint.requestBody?.content
   if (!content) return undefined
-  const media = content[selectedContentType.value] ?? content['application/json'] ?? Object.values(content)[0]
+  // form-data 模式优先取 multipart schema，避免仍指向 json 导致预填失败
+  if (bodyMode.value === 'formdata' || selectedContentType.value === 'multipart/form-data') {
+    return (content['multipart/form-data'] ?? Object.values(content)[0])?.schema
+  }
+  const media =
+    content[selectedContentType.value] ??
+    content['application/json'] ??
+    Object.values(content)[0]
   return media?.schema
 })
+
+/** multipart schema（不依赖 bodyMode，避免初始化竞态） */
+function getMultipartSchema(): JsonSchema | undefined {
+  const content = props.endpoint.requestBody?.content
+  if (!content) return undefined
+  return (content['multipart/form-data'] ?? Object.values(content)[0])?.schema
+}
 
 const canUseFormMode = computed(() => {
   const schema = bodySchema.value
@@ -654,7 +689,7 @@ function clearFormDataPreview(field: FormDataField) {
 function rebuildFormDataFields() {
   for (const field of formDataFields.value) clearFormDataPreview(field)
 
-  const schema = bodySchema.value
+  const schema = getMultipartSchema() ?? bodySchema.value
   const propsMap = schema?.properties
   if (!propsMap || !Object.keys(propsMap).length) {
     formDataFields.value = []
@@ -675,7 +710,7 @@ function rebuildFormDataFields() {
       fileName: '',
       file: null,
       previewUrl: null,
-      accept: image ? 'image/*' : binary ? '*/*' : '',
+      accept: image ? 'image/*' : '',
       required: required.has(name),
       fromSpec: true,
       description: prop.description ?? (binary ? '文件' : ''),
@@ -1023,30 +1058,14 @@ onBeforeUnmount(() => {
 </script>
 
 <style lang="scss" scoped>
+/**
+ * 控件统一走 Element Plus size="small"。
+ * 平台 theme 将 small 统一为 32px，与 editor/flow 一致，禁止再硬编码高度覆盖。
+ */
 .try-it-out {
   height: 100%;
   display: flex;
   flex-direction: column;
-  // 与顶栏 el-select / el-input 默认高度对齐（32px）
-  --try-control-h: 32px;
-
-  :deep(.el-input:not(.el-input--textarea) .el-input__wrapper) {
-    min-height: var(--try-control-h);
-  }
-
-  :deep(.el-select .el-select__wrapper) {
-    min-height: var(--try-control-h);
-  }
-
-  :deep(.el-button:not(.is-circle):not(.is-text)) {
-    height: var(--try-control-h);
-    padding: 0 15px;
-  }
-
-  :deep(.el-button.is-circle) {
-    width: var(--try-control-h);
-    height: var(--try-control-h);
-  }
 }
 
 .try-title {
@@ -1075,7 +1094,6 @@ onBeforeUnmount(() => {
 
   :deep(.el-input-group__prepend) {
     padding: 0 12px;
-    height: var(--try-control-h);
   }
 }
 
@@ -1090,10 +1108,10 @@ onBeforeUnmount(() => {
 }
 
 .url-preview {
-  background: #f6f8fa;
+  background: #f5f7fa;
   border: 1px solid #e4e7ed;
   border-radius: 6px;
-  padding: 10px 14px;
+  padding: 10px 16px;
   margin-bottom: 16px;
 
   code {
@@ -1108,10 +1126,17 @@ onBeforeUnmount(() => {
   :deep(.el-tabs__header) {
     margin-bottom: 12px;
   }
+
+  :deep(.el-tabs__item) {
+    height: 36px;
+    line-height: 36px;
+    font-size: 13px;
+  }
 }
 
 .tab-badge {
   margin-left: 4px;
+
   :deep(.el-badge__content) {
     position: relative;
     transform: none;
@@ -1127,12 +1152,13 @@ onBeforeUnmount(() => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 600;
-  color: #606266;
+  color: #303133;
   margin-bottom: 8px;
 }
 
+/* 与左侧 ParamTable 同款表格 */
 .params-table {
   border: 1px solid #e4e7ed;
   border-radius: 6px;
@@ -1142,49 +1168,54 @@ onBeforeUnmount(() => {
 .params-header,
 .params-row {
   display: grid;
-  grid-template-columns: 36px 120px 1fr 72px 1fr;
+  grid-template-columns: 40px 140px 1fr 80px 1fr;
   gap: 8px;
-  padding: 8px 12px;
+  padding: 10px 16px;
   align-items: center;
 }
 
 .query-table .params-header,
 .query-table .params-row {
-  grid-template-columns: 36px 120px 1fr 72px 1fr 36px;
+  grid-template-columns: 40px 140px 1fr 80px 1fr 36px;
 }
 
 .formdata-table .params-header,
 .formdata-table .params-row {
-  grid-template-columns: 36px 120px 100px 1fr 120px 36px;
-  align-items: start;
+  grid-template-columns: 40px 140px 100px 1fr 1fr 36px;
 }
 
 .form-header,
 .form-row {
-  grid-template-columns: 36px 120px 1fr 72px 1fr;
+  grid-template-columns: 40px 140px 1fr 80px 1fr;
 }
 
 .params-header {
   background: #f5f7fa;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 600;
   color: #606266;
   border-bottom: 1px solid #e4e7ed;
-  align-items: center;
 }
 
 .params-row {
   border-bottom: 1px solid #f0f0f0;
+
   &:last-child {
     border-bottom: none;
   }
 }
 
 .params-empty {
-  padding: 16px;
+  padding: 20px 16px;
   text-align: center;
   color: #909399;
   font-size: 13px;
+}
+
+.col-check {
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .col-name {
@@ -1193,7 +1224,6 @@ onBeforeUnmount(() => {
   font-weight: 500;
   color: #303133;
   min-width: 0;
-  padding-top: 4px;
 
   .required {
     color: #f56c6c;
@@ -1213,20 +1243,20 @@ onBeforeUnmount(() => {
   font-family: 'SFMono-Regular', Consolas, monospace;
   font-size: 12px;
   color: #909399;
-  padding-top: 6px;
 }
 
 .col-desc {
-  font-size: 12px;
-  color: #909399;
+  font-size: 13px;
+  color: #606266;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  padding-top: 6px;
 }
 
 .col-action {
-  padding-top: 2px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .body-toolbar {
@@ -1237,18 +1267,8 @@ onBeforeUnmount(() => {
   flex-wrap: wrap;
 }
 
-.mode-radios {
-  :deep(.el-radio-button__inner) {
-    height: var(--try-control-h);
-    line-height: calc(var(--try-control-h) - 2px);
-    padding: 0 14px;
-    display: inline-flex;
-    align-items: center;
-  }
-}
-
 .content-type-select {
-  width: 240px;
+  width: 220px;
 }
 
 .body-editor {
@@ -1348,6 +1368,7 @@ onBeforeUnmount(() => {
   font-size: 12px;
   color: #909399;
   margin-top: 8px;
+  line-height: 1.5;
 }
 
 .field-error {

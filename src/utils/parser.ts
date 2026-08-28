@@ -137,9 +137,22 @@ function resolveJsonPointer(ref: string): unknown {
 
 // ── 获取 spec 文本 ──
 
+/**
+ * 解析 spec URL：相对路径基于 Vite BASE_URL，避免深链 F5 时相对当前路径拼接错误
+ * 例：/p/xxx/get/api/users + specs/a.yaml → 错误变成 .../api/specs/a.yaml
+ */
+function resolveSpecUrl(url: string): string {
+  if (/^https?:\/\//i.test(url) || url.startsWith('//')) return url
+  if (url.startsWith('/')) return url
+  const base = import.meta.env.BASE_URL || '/'
+  const normalizedBase = base.endsWith('/') ? base : `${base}/`
+  return `${normalizedBase}${url.replace(/^\.\//, '')}`
+}
+
 async function fetchSpec(url: string): Promise<string> {
-  const resp = await fetch(url)
-  if (!resp.ok) throw new Error(`获取 spec 失败: ${resp.status} ${resp.statusText}`)
+  const resolved = resolveSpecUrl(url)
+  const resp = await fetch(resolved)
+  if (!resp.ok) throw new Error(`获取 spec 失败: ${resp.status} ${resp.statusText} (${resolved})`)
   return resp.text()
 }
 

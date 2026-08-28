@@ -11,20 +11,22 @@
           <el-tooltip content="分栏视图" placement="top">
             <el-button
               :type="viewMode === 'split' ? 'primary' : 'default'"
-              :icon="Grid"
               circle
               size="small"
               @click="viewMode = 'split'"
-            />
+            >
+              <AppIcon name="grid" :size="14" />
+            </el-button>
           </el-tooltip>
           <el-tooltip content="测试视图" placement="top">
             <el-button
               :type="viewMode === 'test' ? 'primary' : 'default'"
-              :icon="Promotion"
               circle
               size="small"
               @click="viewMode = 'test'"
-            />
+            >
+              <AppIcon name="promotion" :size="14" />
+            </el-button>
           </el-tooltip>
         </div>
       </div>
@@ -123,7 +125,7 @@
 
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-import { Grid, Promotion } from '@element-plus/icons-vue'
+import AppIcon from '@schema-platform/platform-shared/components/common/AppIcon.vue'
 import type { ApiEndpoint } from '@/types'
 import { renderMarkdown } from '@/utils/markdown'
 import MethodBadge from './MethodBadge.vue'

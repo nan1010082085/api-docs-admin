@@ -138,11 +138,13 @@ function resolveJsonPointer(ref: string): unknown {
 // ── 获取 spec 文本 ──
 
 /**
- * 解析 spec URL：相对路径基于 Vite BASE_URL，避免深链 F5 时相对当前路径拼接错误
- * 例：/p/xxx/get/api/users + specs/a.yaml → 错误变成 .../api/specs/a.yaml
+ * 解析 spec URL：只支持本地文件路径，不支持远程 URL（CORS 限制）
+ * 相对路径基于 Vite BASE_URL，避免深链 F5 时相对当前路径拼接错误
  */
 function resolveSpecUrl(url: string): string {
-  if (/^https?:\/\//i.test(url) || url.startsWith('//')) return url
+  if (/^https?:\/\//i.test(url) || url.startsWith('//')) {
+    throw new Error('不支持远程 URL，请将 spec 文件放到 public/specs/ 目录')
+  }
   if (url.startsWith('/')) return url
   const base = import.meta.env.BASE_URL || '/'
   const normalizedBase = base.endsWith('/') ? base : `${base}/`

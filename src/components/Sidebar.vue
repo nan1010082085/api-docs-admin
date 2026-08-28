@@ -24,7 +24,7 @@
               :key="ep.id"
               class="endpoint-item"
               :class="{ active: activeEndpointId === ep.id }"
-              @click="selectEndpoint(ep)"
+              @click="emit('select', ep)"
             >
               <MethodBadge :method="ep.method" />
               <div class="endpoint-info">
@@ -46,33 +46,52 @@
 </template>
 
 <script setup lang="ts">
-import { reactive, ref } from 'vue'
+import { reactive, watch } from 'vue'
 import { Loading, ArrowRight, ArrowDown } from '@element-plus/icons-vue'
 import { useDocsStore } from '@/stores/docs'
 import MethodBadge from './MethodBadge.vue'
-import type { ApiEndpoint, ApiTagGroup } from '@/types'
+import type { ApiEndpoint } from '@/types'
+
+const props = defineProps<{
+  activeEndpointId: string
+}>()
+
+const emit = defineEmits<{
+  select: [ep: ApiEndpoint]
+}>()
 
 const store = useDocsStore()
 const expanded = reactive<Record<string, boolean>>({})
-const activeEndpointId = ref('')
 
 function toggleGroup(name: string) {
   expanded[name] = !expanded[name]
 }
 
-function selectEndpoint(ep: ApiEndpoint) {
-  activeEndpointId.value = ep.id
-  window.dispatchEvent(new CustomEvent('endpoint-select', { detail: ep }))
-}
-
-// 默认展开第一组
-store.$subscribe(() => {
-  if (store.filteredGroups.length > 0 && Object.keys(expanded).length === 0) {
-    for (const g of store.filteredGroups) {
-      expanded[g.name] = true
+watch(
+  () => store.filteredGroups,
+  (groups) => {
+    if (groups.length > 0 && Object.keys(expanded).length === 0) {
+      for (const g of groups) {
+        expanded[g.name] = true
+      }
     }
-  }
-})
+  },
+  { immediate: true },
+)
+
+/** 深链选中时展开对应分组 */
+watch(
+  () => props.activeEndpointId,
+  (id) => {
+    if (!id) return
+    for (const g of store.filteredGroups) {
+      if (g.endpoints.some((ep) => ep.id === id)) {
+        expanded[g.name] = true
+        break
+      }
+    }
+  },
+)
 </script>
 
 <style lang="scss" scoped>
@@ -85,7 +104,8 @@ store.$subscribe(() => {
   flex-direction: column;
 }
 
-.sidebar-loading, .sidebar-error {
+.sidebar-loading,
+.sidebar-error {
   padding: 24px;
   display: flex;
   align-items: center;

@@ -61,7 +61,7 @@
             <span>Query 参数</span>
             <el-button size="small" text type="primary" @click="addQueryRow">+ 添加</el-button>
           </div>
-          <div class="params-table">
+          <div class="params-table query-table">
             <div class="params-header">
               <span class="col-check" />
               <span class="col-name">参数名</span>
@@ -71,7 +71,7 @@
               <span class="col-action" />
             </div>
             <div v-if="!queryRows.length" class="params-empty">暂无 Query 参数，可点击添加</div>
-            <div v-for="(row, idx) in queryRows" :key="row.id" class="params-row has-action">
+            <div v-for="(row, idx) in queryRows" :key="row.id" class="params-row">
               <span class="col-check">
                 <el-checkbox v-model="row.enabled" />
               </span>
@@ -274,7 +274,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, watch } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { Delete, Promotion, DocumentCopy } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import type { UploadFile } from 'element-plus'
@@ -960,9 +960,8 @@ watch(bodyMode, (mode) => {
   align-items: center;
 }
 
-.params-row.has-action,
-.params-header:has(+ .params-row.has-action),
-.param-block:has(.has-action) .params-header {
+.query-table .params-header,
+.query-table .params-row {
   grid-template-columns: 36px 120px 1fr 72px 1fr 36px;
 }
 

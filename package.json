@@ -5,6 +5,8 @@
   "type": "module",
   "scripts": {
     "bundle": "node scripts/bundle-spec.mjs",
+    "sync:openapi": "node scripts/sync-from-server.mjs",
+    "check:coverage": "pnpm bundle && node scripts/check-coverage.mjs",
     "dev": "pnpm bundle && vite",
     "build": "pnpm bundle && vue-tsc -b && vite build",
     "preview": "vite preview"

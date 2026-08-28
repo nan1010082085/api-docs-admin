@@ -80,7 +80,7 @@
     </el-tabs>
 
     <!-- 在线测试 -->
-    <TryItOut :endpoint="endpoint" :environments="store.activeProject?.config.environments" />
+    <TryItOut :endpoint="endpoint" />
   </div>
 </template>
 
@@ -130,7 +130,7 @@ function formatJson(val: unknown): string {
 
 <style lang="scss" scoped>
 .endpoint-detail {
-  max-width: 960px;
+  width: 100%;
 }
 
 .detail-header {

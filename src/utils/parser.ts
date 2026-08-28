@@ -1,0 +1,237 @@
+import yaml from 'js-yaml'
+import type {
+  ApiEndpoint,
+  ApiParameter,
+  ApiTagGroup,
+  HttpMethod,
+  JsonSchema,
+  ProjectConfig,
+  ProjectData,
+  RequestBody,
+  ApiResponse,
+} from '@/types'
+
+/** 完整的 OpenAPI root，用于 $ref 解析 */
+interface OpenApiRoot {
+  components?: {
+    parameters?: Record<string, unknown>
+    schemas?: Record<string, unknown>
+    securitySchemes?: Record<string, unknown>
+    requestBodies?: Record<string, unknown>
+    responses?: Record<string, unknown>
+  }
+  [key: string]: unknown
+}
+
+let _root: OpenApiRoot = {}
+
+/**
+ * 解析 OpenAPI spec（YAML 或 JSON）为 ProjectData
+ */
+export async function parseSpec(config: ProjectConfig): Promise<ProjectData> {
+  const text = await fetchSpec(config.specUrl)
+  const raw: OpenApiRoot = text.trim().startsWith('{') ? JSON.parse(text) : yaml.load(text) as OpenApiRoot
+
+  if (!raw || typeof raw !== 'object') {
+    throw new Error(`无法解析 spec: ${config.specUrl}`)
+  }
+
+  _root = raw
+
+  const info = (raw as Record<string, unknown>).info as Record<string, unknown> ?? {}
+  const servers = (raw as Record<string, unknown>).servers as Array<Record<string, unknown>> ?? []
+  const baseUrl = (servers[0]?.url as string) ?? ''
+  const paths: Record<string, Record<string, unknown>> = (raw as Record<string, unknown>).paths as Record<string, Record<string, unknown>> ?? {}
+
+  // 收集所有 tag 描述
+  const tagDescriptions = new Map<string, string>()
+  const rawTags = (raw as Record<string, unknown>).tags as Array<Record<string, unknown>> | undefined
+  if (Array.isArray(rawTags)) {
+    for (const tag of rawTags) {
+      if (tag.name) tagDescriptions.set(tag.name as string, (tag.description as string) ?? '')
+    }
+  }
+
+  // 解析所有端点
+  const endpoints: ApiEndpoint[] = []
+  for (const [path, pathItem] of Object.entries(paths)) {
+    for (const [method, operation] of Object.entries(pathItem)) {
+      if (!isHttpMethod(method)) continue
+      const op = resolveRef(operation) as Record<string, unknown>
+      const endpoint: ApiEndpoint = {
+        id: `${method}-${path}`,
+        method,
+        path,
+        summary: op.summary as string | undefined,
+        description: op.description as string | undefined,
+        tags: (op.tags as string[]) ?? [],
+        deprecated: op.deprecated as boolean | undefined,
+        parameters: parseParameters(op.parameters as unknown[]),
+        requestBody: parseRequestBody(op.requestBody),
+        responses: parseResponses(op.responses as Record<string, unknown>),
+        security: op.security as unknown[] | undefined,
+      }
+      endpoints.push(endpoint)
+    }
+  }
+
+  // 按 tag 分组
+  const groups = groupByTag(endpoints, tagDescriptions)
+
+  return {
+    config,
+    title: info.title as string,
+    description: info.description as string,
+    version: info.version as string,
+    baseUrl,
+    groups,
+    endpoints,
+  }
+}
+
+// ── $ref 解析 ──
+
+/** 递归解析 $ref */
+function resolveRef(obj: unknown, depth = 0): unknown {
+  if (depth > 20) return obj
+  if (!obj || typeof obj !== 'object') return obj
+
+  if (Array.isArray(obj)) {
+    return obj.map((item) => resolveRef(item, depth + 1))
+  }
+
+  const record = obj as Record<string, unknown>
+
+  // 处理 $ref
+  if (record['$ref'] && typeof record['$ref'] === 'string') {
+    const resolved = resolveJsonPointer(record['$ref'])
+    if (resolved !== undefined) {
+      return resolveRef(resolved, depth + 1)
+    }
+    return record
+  }
+
+  // 递归处理所有属性
+  const result: Record<string, unknown> = {}
+  for (const [key, value] of Object.entries(record)) {
+    result[key] = resolveRef(value, depth + 1)
+  }
+  return result
+}
+
+/** 解析 JSON Pointer (#/components/parameters/PageParam) */
+function resolveJsonPointer(ref: string): unknown {
+  if (!ref.startsWith('#/')) return undefined
+  const parts = ref.slice(2).split('/')
+  let current: unknown = _root
+  for (const part of parts) {
+    if (current === null || current === undefined || typeof current !== 'object') return undefined
+    current = (current as Record<string, unknown>)[part]
+  }
+  return current
+}
+
+// ── 获取 spec 文本 ──
+
+async function fetchSpec(url: string): Promise<string> {
+  const resp = await fetch(url)
+  if (!resp.ok) throw new Error(`获取 spec 失败: ${resp.status} ${resp.statusText}`)
+  return resp.text()
+}
+
+// ── 工具函数 ──
+
+function isHttpMethod(s: string): s is HttpMethod {
+  return ['get', 'post', 'put', 'patch', 'delete', 'head', 'options'].includes(s)
+}
+
+function parseParameters(raw: unknown[]): ApiParameter[] {
+  if (!Array.isArray(raw)) return []
+  return raw.map((p) => {
+    const param = resolveRef(p) as Record<string, unknown>
+    return {
+      name: param.name as string,
+      in: param.in as ApiParameter['in'],
+      description: param.description as string | undefined,
+      required: param.required as boolean | undefined,
+      deprecated: param.deprecated as boolean | undefined,
+      schema: resolveRef(param.schema) as JsonSchema | undefined,
+      example: param.example,
+    }
+  })
+}
+
+function parseRequestBody(raw: unknown): RequestBody | undefined {
+  const resolved = resolveRef(raw) as Record<string, unknown> | undefined
+  if (!resolved) return undefined
+  const content: Record<string, { schema?: JsonSchema; example?: unknown }> = {}
+  const rawContent = resolved.content as Record<string, Record<string, unknown>> | undefined
+  if (rawContent) {
+    for (const [mediaType, mediaObj] of Object.entries(rawContent)) {
+      content[mediaType] = {
+        schema: resolveRef(mediaObj.schema) as JsonSchema | undefined,
+        example: mediaObj.example,
+      }
+    }
+  }
+  return {
+    description: resolved.description as string | undefined,
+    required: resolved.required as boolean | undefined,
+    content,
+  }
+}
+
+function parseResponses(
+  raw: Record<string, unknown> | undefined,
+): Record<string, ApiResponse> | undefined {
+  if (!raw) return undefined
+  const result: Record<string, ApiResponse> = {}
+  for (const [statusCode, resp] of Object.entries(raw)) {
+    const r = resolveRef(resp) as Record<string, unknown>
+    const content: Record<string, { schema?: JsonSchema; example?: unknown }> = {}
+    const rawContent = r.content as Record<string, Record<string, unknown>> | undefined
+    if (rawContent) {
+      for (const [mediaType, mediaObj] of Object.entries(rawContent)) {
+        content[mediaType] = {
+          schema: resolveRef(mediaObj.schema) as JsonSchema | undefined,
+          example: mediaObj.example,
+        }
+      }
+    }
+    result[statusCode] = {
+      description: r.description as string | undefined,
+      content: Object.keys(content).length > 0 ? content : undefined,
+    }
+  }
+  return result
+}
+
+function groupByTag(
+  endpoints: ApiEndpoint[],
+  tagDescriptions: Map<string, string>,
+): ApiTagGroup[] {
+  const map = new Map<string, ApiEndpoint[]>()
+
+  for (const ep of endpoints) {
+    const tags = ep.tags?.length ? ep.tags : ['未分类']
+    for (const tag of tags) {
+      if (!map.has(tag)) map.set(tag, [])
+      map.get(tag)!.push(ep)
+    }
+  }
+
+  const groups: ApiTagGroup[] = []
+  for (const [name, eps] of map) {
+    groups.push({
+      name,
+      description: tagDescriptions.get(name),
+      endpoints: eps,
+    })
+  }
+
+  return groups.sort((a, b) => {
+    const aHas = tagDescriptions.has(a.name) ? 0 : 1
+    const bHas = tagDescriptions.has(b.name) ? 0 : 1
+    return aHas - bHas
+  })
+}

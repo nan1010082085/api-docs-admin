@@ -1,0 +1,29 @@
+# 依赖
+node_modules/
+
+# 构建产物
+dist/
+
+# 敏感配置（绝不提交）
+.env
+.env.local
+.env.*.local
+.npmrc
+*.local
+
+# 构建时生成的 spec 打包文件（由 scripts/bundle-spec.mjs 生成）
+public/specs/schema-platform.yaml
+
+# TypeScript 构建缓存
+*.tsbuildinfo
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db

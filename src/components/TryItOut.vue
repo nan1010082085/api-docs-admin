@@ -138,6 +138,10 @@
               <el-option label="text/plain" value="text/plain" />
             </el-select>
             <el-button size="small" @click="fillExample">填入示例</el-button>
+            <el-button size="small" @click="copyRequestBody">
+              <AppIcon name="document-copy" :size="14" style="margin-right: 4px" />
+              复制
+            </el-button>
           </template>
         </div>
 
@@ -377,10 +381,13 @@ import type { UploadFile } from 'element-plus'
 import AppIcon from '@/components/AppIcon.vue'
 import { useDocsStore } from '@/stores/docs'
 import { buildCurlCommand } from '@/utils/curl'
+import { copyText } from '@/utils/clipboard'
 import {
   exampleToInputValue,
   generateExample,
+  getMediaExampleText,
   parseInputBySchema,
+  resolveMediaExample,
 } from '@/utils/example'
 import { autoExtractToken, extractTokenFromBody } from '@/utils/auth'
 import { highlightCode, langFromContentType, tryFormatJson } from '@/utils/highlight'
@@ -451,6 +458,7 @@ interface FormDataField {
   required: boolean
   fromSpec: boolean
   description: string
+  schema?: JsonSchema
 }
 
 interface HeaderRow {
@@ -585,12 +593,7 @@ const responseBodyHighlighted = computed(() => {
 /** 复制响应体 */
 async function copyResponse() {
   if (!response.value) return
-  try {
-    await navigator.clipboard.writeText(responseBodyFormatted.value)
-    ElMessage.success('响应体已复制')
-  } catch {
-    ElMessage.error('复制失败')
-  }
+  await copyText(responseBodyFormatted.value, '响应体已复制')
 }
 
 /** 手动从当前响应体提取 Token */
@@ -807,6 +810,7 @@ function rebuildFormDataFields() {
       required: required.has(name),
       fromSpec: true,
       description: prop.description ?? (binary ? '文件' : ''),
+      schema: prop,
     }
   })
 }
@@ -871,11 +875,80 @@ function fillExample() {
   const schema = bodySchema.value
   const content = props.endpoint.requestBody?.content
   const media = content?.[selectedContentType.value] ?? content?.['application/json']
-  const example = media?.example ?? generateExample(schema)
+  const example = resolveMediaExample(media)
   bodyValue.value = JSON.stringify(example ?? {}, null, 2)
   if (bodyMode.value === 'form') {
     rebuildBodyFields()
   }
+}
+
+/** 当前请求体 media（按 Content-Type） */
+function getActiveRequestMedia() {
+  const content = props.endpoint.requestBody?.content
+  return content?.[selectedContentType.value] ?? content?.['application/json']
+}
+
+/**
+ * 获取符合 JSON Schema 的可复制请求体文本
+ */
+function getRequestBodyCopyText(): string {
+  if (bodyMode.value === 'none') return ''
+
+  if (bodyMode.value === 'formdata' || selectedContentType.value === 'multipart/form-data') {
+    const obj: Record<string, unknown> = {}
+    for (const field of formDataFields.value) {
+      if (!field.enabled || !field.name.trim()) continue
+      if (field.type === 'file') {
+        obj[field.name] = field.fileName ? `<file: ${field.fileName}>` : null
+      } else if (field.schema) {
+        obj[field.name] = parseInputBySchema(field.value, field.schema)
+      } else {
+        obj[field.name] = field.value
+      }
+    }
+    for (const [k, v] of Object.entries(store.getAuthBodyFields())) {
+      if (!(k in obj)) obj[k] = coerceEnvBodyValue(v)
+    }
+    return JSON.stringify(obj, null, 2)
+  }
+
+  if (
+    bodyMode.value === 'form' &&
+    selectedContentType.value === 'application/x-www-form-urlencoded'
+  ) {
+    return buildUrlEncodedBodyFromForm()
+  }
+
+  if (bodyMode.value === 'form') {
+    return buildJsonBodyFromForm()
+  }
+
+  let raw = bodyValue.value
+  if (selectedContentType.value.includes('json')) {
+    raw = mergeAuthBodyIntoJson(raw)
+  }
+  if (raw.trim()) {
+    if (selectedContentType.value.includes('json')) {
+      try {
+        return JSON.stringify(JSON.parse(raw), null, 2)
+      } catch {
+        // 无效 JSON 时回退到 schema 示例
+      }
+    } else {
+      return raw
+    }
+  }
+
+  return getMediaExampleText(getActiveRequestMedia(), selectedContentType.value)
+}
+
+/** 复制当前请求体（按 schema 类型解析） */
+async function copyRequestBody() {
+  if (bodyMode.value === 'none') {
+    ElMessage.warning('当前请求无 Body')
+    return
+  }
+  await copyText(getRequestBodyCopyText(), '请求体已复制')
 }
 
 function buildFormBodyRecord(): Record<string, unknown> {
@@ -1174,12 +1247,7 @@ async function copyCurl() {
     body: curlBody,
     contentType: selectedContentType.value,
   })
-  try {
-    await navigator.clipboard.writeText(curl)
-    ElMessage.success('cURL 已复制')
-  } catch {
-    ElMessage.error('复制失败')
-  }
+  await copyText(curl, 'cURL 已复制')
 }
 
 function onBaseUrlChange(val: string) {

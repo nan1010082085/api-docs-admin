@@ -1,5 +1,32 @@
 import type { JsonSchema } from '@/types'
 
+/** OpenAPI media content（schema + example） */
+export interface MediaContent {
+  schema?: JsonSchema
+  example?: unknown
+}
+
+/**
+ * 合并 allOf 各分支 schema（用于生成示例）
+ */
+function mergeAllOfSchemas(parts: JsonSchema[]): JsonSchema {
+  const merged: JsonSchema = { properties: {}, required: [] }
+  for (const part of parts) {
+    if (part.type) merged.type = part.type
+    if (part.properties) {
+      merged.properties = { ...(merged.properties ?? {}), ...part.properties }
+    }
+    if (part.required) {
+      merged.required = [...(merged.required ?? []), ...part.required]
+    }
+    if (part.items && !merged.items) merged.items = part.items
+  }
+  if (!merged.type && merged.properties && Object.keys(merged.properties).length > 0) {
+    merged.type = 'object'
+  }
+  return merged
+}
+
 /**
  * 根据 JSON Schema 生成示例值（优先 example / default / enum）
  */
@@ -8,6 +35,9 @@ export function generateExample(schema: JsonSchema | undefined): unknown {
   if (schema.example !== undefined) return schema.example
   if (schema.default !== undefined) return schema.default
   if (schema.enum?.length) return schema.enum[0]
+  if (schema.oneOf?.length) return generateExample(schema.oneOf[0])
+  if (schema.anyOf?.length) return generateExample(schema.anyOf[0])
+  if (schema.allOf?.length) return generateExample(mergeAllOfSchemas(schema.allOf))
 
   const type = schema.type
   if (type === 'object' || schema.properties) {
@@ -69,4 +99,46 @@ export function parseInputBySchema(raw: string, schema?: JsonSchema): unknown {
     }
   }
   return raw
+}
+
+/**
+ * 解析 media 示例值：显式 example 优先，否则按 schema 生成
+ */
+export function resolveMediaExample(media?: MediaContent): unknown {
+  if (!media) return null
+  if (media.example !== undefined) return media.example
+  return generateExample(media.schema)
+}
+
+/**
+ * 将示例值格式化为可复制文本（按 Content-Type）
+ */
+export function formatExampleText(value: unknown, contentType = 'application/json'): string {
+  if (value === null || value === undefined) return ''
+  if (contentType === 'application/x-www-form-urlencoded') {
+    if (typeof value === 'object' && !Array.isArray(value)) {
+      const params = new URLSearchParams()
+      for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
+        if (v === undefined || v === null) continue
+        params.append(k, typeof v === 'object' ? JSON.stringify(v) : String(v))
+      }
+      return params.toString()
+    }
+  }
+  if (contentType.includes('json') || typeof value === 'object') {
+    try {
+      return JSON.stringify(value, null, 2)
+    } catch {
+      return String(value)
+    }
+  }
+  if (typeof value === 'string') return value
+  return String(value)
+}
+
+/**
+ * 获取符合 JSON Schema 的可复制示例文本
+ */
+export function getMediaExampleText(media?: MediaContent, contentType = 'application/json'): string {
+  return formatExampleText(resolveMediaExample(media), contentType)
 }

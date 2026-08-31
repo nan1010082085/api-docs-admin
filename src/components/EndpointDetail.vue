@@ -52,10 +52,11 @@
               <div v-for="(media, mediaType) in endpoint.requestBody.content" :key="mediaType" class="media-section">
                 <el-tag size="small" type="info">{{ mediaType }}</el-tag>
                 <SchemaViewer v-if="media.schema" :schema="media.schema" />
-                <div v-if="media.example" class="example-block">
-                  <h5>示例</h5>
-                  <pre><code>{{ formatJson(media.example) }}</code></pre>
-                </div>
+                <ExampleBlock
+                  v-if="media.schema || media.example !== undefined"
+                  :media="media"
+                  :content-type="String(mediaType)"
+                />
               </div>
             </div>
             <el-empty v-else description="无请求体" :image-size="48" />
@@ -72,10 +73,11 @@
                   <div v-for="(media, mediaType) in resp.content" :key="mediaType" class="media-section">
                     <el-tag size="small" type="info">{{ mediaType }}</el-tag>
                     <SchemaViewer v-if="media.schema" :schema="media.schema" />
-                    <div v-if="media.example" class="example-block">
-                      <h5>示例</h5>
-                      <pre><code>{{ formatJson(media.example) }}</code></pre>
-                    </div>
+                    <ExampleBlock
+                      v-if="media.schema || media.example !== undefined"
+                      :media="media"
+                      :content-type="String(mediaType)"
+                    />
                   </div>
                 </div>
               </div>
@@ -126,6 +128,7 @@ import { useDocsStore } from '@/stores/docs'
 import MethodBadge from './MethodBadge.vue'
 import ParamTable from './ParamTable.vue'
 import SchemaViewer from './SchemaViewer.vue'
+import ExampleBlock from './ExampleBlock.vue'
 import TryItOut from './TryItOut.vue'
 
 const props = defineProps<{
@@ -165,11 +168,6 @@ function statusClass(code: string) {
   if (n >= 300 && n < 400) return 'status-3xx'
   if (n >= 400 && n < 500) return 'status-4xx'
   return 'status-5xx'
-}
-
-function formatJson(val: unknown): string {
-  try { return JSON.stringify(val, null, 2) }
-  catch { return String(val) }
 }
 </script>
 
@@ -255,25 +253,6 @@ function formatJson(val: unknown): string {
 
 .media-section {
   margin-top: 12px;
-}
-
-.example-block {
-  margin-top: 12px;
-
-  h5 {
-    font-size: 13px;
-    color: #909399;
-    margin-bottom: 8px;
-  }
-
-  pre {
-    background: #f6f8fa;
-    padding: 16px;
-    border-radius: 6px;
-    overflow-x: auto;
-    font-size: 13px;
-    line-height: 1.5;
-  }
 }
 
 .response-section {

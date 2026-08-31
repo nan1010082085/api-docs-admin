@@ -39,15 +39,16 @@
         </template>
 
         <div v-if="pathRows.length" class="param-block">
-          <div class="param-block-title">Path 参数</div>
-          <div class="params-table">
-            <div class="params-header">
-              <span class="col-check" />
-              <span class="col-name">参数名</span>
-              <span class="col-value">参数值</span>
-              <span class="col-type">类型</span>
-              <span class="col-desc">说明</span>
-            </div>
+          <el-collapse v-model="collapsePath" class="param-collapse">
+            <el-collapse-item title="Path 参数" name="path">
+              <div class="params-table">
+                <div class="params-header">
+                  <span class="col-check" />
+                  <span class="col-name">参数名</span>
+                  <span class="col-value">参数值</span>
+                  <span class="col-type">类型</span>
+                  <span class="col-desc">说明</span>
+                </div>
             <div v-for="row in pathRows" :key="row.id" class="params-row">
               <span class="col-check">
                 <el-checkbox v-model="row.enabled" :disabled="row.required" />
@@ -62,23 +63,27 @@
               <span class="col-type">{{ row.type }}</span>
               <span class="col-desc">{{ row.description }}</span>
             </div>
-          </div>
+            </div>
+            </el-collapse-item>
+          </el-collapse>
         </div>
 
         <div class="param-block">
-          <div class="param-block-title">
-            <span>Query 参数</span>
-            <el-button text type="primary" size="small" @click="addQueryRow">+ 添加</el-button>
-          </div>
-          <div class="params-table query-table">
-            <div class="params-header">
-              <span class="col-check" />
-              <span class="col-name">参数名</span>
-              <span class="col-value">参数值</span>
-              <span class="col-type">类型</span>
-              <span class="col-desc">说明</span>
-              <span class="col-action" />
-            </div>
+          <el-collapse v-model="collapseQuery" class="param-collapse">
+            <el-collapse-item name="query">
+              <template #title>
+                <span>Query 参数</span>
+                <el-button text type="primary" size="small" @click.stop="addQueryRow">+ 添加</el-button>
+              </template>
+              <div class="params-table query-table">
+                <div class="params-header">
+                  <span class="col-check" />
+                  <span class="col-name">参数名</span>
+                  <span class="col-value">参数值</span>
+                  <span class="col-type">类型</span>
+                  <span class="col-desc">说明</span>
+                  <span class="col-action" />
+                </div>
             <div v-if="!queryRows.length" class="params-empty">暂无 Query 参数，可点击添加</div>
             <div v-for="(row, idx) in queryRows" :key="row.id" class="params-row">
               <span class="col-check">
@@ -112,7 +117,9 @@
                 </el-button>
               </span>
             </div>
-          </div>
+            </div>
+            </el-collapse-item>
+          </el-collapse>
         </div>
       </el-tab-pane>
 
@@ -322,53 +329,66 @@
           手写 Cookie 仅对「复制 cURL」生效；浏览器试调请勾选上方选项（同源 / 本地代理下有效），跨域仍受 CORS 限制。
         </p>
       </el-tab-pane>
-    </el-tabs>
 
-    <div v-if="response" class="response-section">
-      <div class="response-status">
-        <span :class="statusClass(response.status)">{{ response.status }} {{ response.statusText }}</span>
-        <span class="response-meta">{{ response.time }}ms · {{ formatSize(response.size) }}</span>
-      </div>
-      <el-tabs v-model="respTab" class="resp-tabs" size="small">
-        <el-tab-pane label="响应体" name="body">
-          <div class="resp-toolbar">
-            <el-button size="small" @click="copyResponse">复制</el-button>
-            <el-button size="small" @click="extractTokenFromResponse">提取 Token</el-button>
-            <el-input
-              v-model="tokenFieldConfig"
-              size="small"
-              placeholder="Token JSON 路径，如 data.token"
-              class="token-field-input"
-              @change="saveTokenFieldConfig(tokenFieldConfig)"
-            />
+      <!-- 响应结果 -->
+      <el-tab-pane name="response">
+        <template #label>
+          响应
+          <el-badge v-if="response" :type="statusBadgeType" is-dot class="tab-badge" />
+        </template>
+
+        <div v-if="!response" class="response-empty">
+          <el-empty description="发送请求后查看响应结果" :image-size="64" />
+        </div>
+
+        <template v-else>
+          <div class="response-status">
+            <span :class="statusClass(response.status)">{{ response.status }} {{ response.statusText }}</span>
+            <span class="response-meta">{{ response.time }}ms · {{ formatSize(response.size) }}</span>
           </div>
-          <pre class="response-body">
-            <code v-if="responseBodyHighlighted" class="hljs" v-html="responseBodyHighlighted"></code>
-            <code v-else>{{ responseBodyFormatted }}</code>
-          </pre>
-        </el-tab-pane>
-        <el-tab-pane label="响应头" name="headers">
-          <div v-for="(val, key) in response.headers" :key="key" class="resp-header-item">
-            <code>{{ key }}</code>: {{ val }}
-          </div>
-        </el-tab-pane>
-        <el-tab-pane :label="`历史`" name="history">
-          <div class="history-toolbar">
-            <el-button size="small" @click="onClearHistory">清空历史</el-button>
-          </div>
-          <div v-if="history.length" class="history-list">
-            <div v-for="h in history" :key="h.id" class="history-item">
-              <span :class="statusClass(h.status)">{{ h.status }}</span>
-              <code class="history-method">{{ h.method }}</code>
-              <code class="history-url" :title="h.url">{{ h.url }}</code>
-              <span class="history-meta">{{ h.time }}ms · {{ formatSize(h.size) }}</span>
-              <span class="history-time">{{ formatTime(h.requestTime) }}</span>
-            </div>
-          </div>
-          <el-empty v-else description="暂无请求历史" :image-size="48" />
-        </el-tab-pane>
-      </el-tabs>
-    </div>
+
+          <el-tabs v-model="respTab" class="resp-tabs" size="small">
+            <el-tab-pane label="响应体" name="body">
+              <div class="resp-toolbar">
+                <el-button size="small" @click="copyResponse">复制</el-button>
+                <el-button size="small" @click="extractTokenFromResponse">提取 Token</el-button>
+                <el-input
+                  v-model="tokenFieldConfig"
+                  size="small"
+                  placeholder="Token JSON 路径，如 data.token"
+                  class="token-field-input"
+                  @change="saveTokenFieldConfig(tokenFieldConfig)"
+                />
+              </div>
+              <pre class="response-body">
+                <code v-if="responseBodyHighlighted" class="hljs" v-html="responseBodyHighlighted"></code>
+                <code v-else>{{ responseBodyFormatted }}</code>
+              </pre>
+            </el-tab-pane>
+            <el-tab-pane label="响应头" name="headers">
+              <div v-for="(val, key) in response.headers" :key="key" class="resp-header-item">
+                <code>{{ key }}</code>: {{ val }}
+              </div>
+            </el-tab-pane>
+            <el-tab-pane :label="`历史`" name="history">
+              <div class="history-toolbar">
+                <el-button size="small" @click="onClearHistory">清空历史</el-button>
+              </div>
+              <div v-if="history.length" class="history-list">
+                <div v-for="h in history" :key="h.id" class="history-item">
+                  <span :class="statusClass(h.status)">{{ h.status }}</span>
+                  <code class="history-method">{{ h.method }}</code>
+                  <code class="history-url" :title="h.url">{{ h.url }}</code>
+                  <span class="history-meta">{{ h.time }}ms · {{ formatSize(h.size) }}</span>
+                  <span class="history-time">{{ formatTime(h.requestTime) }}</span>
+                </div>
+              </div>
+              <el-empty v-else description="暂无请求历史" :image-size="48" />
+            </el-tab-pane>
+          </el-tabs>
+        </template>
+      </el-tab-pane>
+    </el-tabs>
 
     <el-alert v-if="error" :title="error" type="error" show-icon closable class="try-error" @close="error = ''" />
   </div>
@@ -493,9 +513,22 @@ const response = ref<TryResponse | null>(null)
 const error = ref('')
 const localBaseUrl = ref('')
 
+// 折叠面板状态
+const collapsePath = ref<string[]>(['path'])
+const collapseQuery = ref<string[]>(['query'])
+
 const displayBaseUrl = computed(() => localBaseUrl.value)
 
 const hasRequestBody = computed(() => !!props.endpoint.requestBody)
+
+/** 响应状态徽章类型 */
+const statusBadgeType = computed(() => {
+  if (!response.value) return 'info'
+  const status = response.value.status
+  if (status >= 200 && status < 300) return 'success'
+  if (status >= 300 && status < 400) return 'warning'
+  return 'danger'
+})
 
 const bodySchema = computed((): JsonSchema | undefined => {
   const content = props.endpoint.requestBody?.content
@@ -1648,20 +1681,12 @@ onBeforeUnmount(() => {
   margin-top: 8px;
 }
 
-.response-section {
-  margin-top: 20px;
-  border: 1px solid #e4e7ed;
-  border-radius: 6px;
-  overflow: hidden;
-}
-
 .response-status {
   display: flex;
   align-items: center;
   gap: 16px;
-  padding: 12px 16px;
-  background: #f5f7fa;
-  border-bottom: 1px solid #e4e7ed;
+  padding: 12px 0;
+  margin-bottom: 12px;
 
   span:first-child {
     font-weight: 700;
@@ -1773,5 +1798,33 @@ onBeforeUnmount(() => {
 }
 .status-4xx {
   color: #f93e3e;
+}
+
+// 折叠面板样式
+.param-collapse {
+  border: none;
+
+  :deep(.el-collapse-item__header) {
+    font-size: 14px;
+    font-weight: 600;
+    color: #303133;
+    background: transparent;
+    border-bottom: none;
+    height: 36px;
+    line-height: 36px;
+  }
+
+  :deep(.el-collapse-item__wrap) {
+    border-bottom: none;
+    background: transparent;
+  }
+
+  :deep(.el-collapse-item__content) {
+    padding-bottom: 0;
+  }
+}
+
+.response-empty {
+  padding: 40px 0;
 }
 </style>

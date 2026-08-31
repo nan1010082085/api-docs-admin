@@ -100,7 +100,7 @@
                   size="small"
                   type="textarea"
                   :rows="2"
-                  placeholder="可选，key=value; ..."
+                  placeholder="可选；仅写入 cURL，浏览器试调请用「携带 Cookie」"
                 />
               </el-form-item>
             </el-form>

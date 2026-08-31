@@ -55,16 +55,21 @@ export async function parseSpec(config: ProjectConfig): Promise<ProjectData> {
   }
 
   // 解析所有端点（合并 path 级与 operation 级 parameters）
+  const refMemo = new Map<string, unknown>()
   const endpoints: ApiEndpoint[] = []
-  for (const [path, pathItem] of Object.entries(paths)) {
+  for (const [path, rawPathItem] of Object.entries(paths)) {
+    // Path Item 可能是 { $ref: '#/...' }
+    const pathItem = resolveRef(rawPathItem, raw, 0, refMemo) as Record<string, unknown>
+    if (!pathItem || typeof pathItem !== 'object') continue
     const pathParams = parseParameters(
-      (pathItem as Record<string, unknown>).parameters as unknown[],
+      pathItem.parameters as unknown[],
       raw,
+      refMemo,
     )
     for (const [method, operation] of Object.entries(pathItem)) {
       if (!isHttpMethod(method)) continue
-      const op = resolveRef(operation, raw) as Record<string, unknown>
-      const opParams = parseParameters(op.parameters as unknown[], raw)
+      const op = resolveRef(operation, raw, 0, refMemo) as Record<string, unknown>
+      const opParams = parseParameters(op.parameters as unknown[], raw, refMemo)
       const endpoint: ApiEndpoint = {
         id: `${method}-${path}`,
         method,
@@ -74,8 +79,8 @@ export async function parseSpec(config: ProjectConfig): Promise<ProjectData> {
         tags: (op.tags as string[]) ?? [],
         deprecated: op.deprecated as boolean | undefined,
         parameters: mergeParameters(pathParams, opParams),
-        requestBody: parseRequestBody(op.requestBody, raw),
-        responses: parseResponses(op.responses as Record<string, unknown>, raw),
+        requestBody: parseRequestBody(op.requestBody, raw, refMemo),
+        responses: parseResponses(op.responses as Record<string, unknown>, raw, refMemo),
         security: op.security as unknown[] | undefined,
       }
       endpoints.push(endpoint)
@@ -89,6 +94,7 @@ export async function parseSpec(config: ProjectConfig): Promise<ProjectData> {
   const securitySchemes = parseSecuritySchemes(
     (raw as Record<string, unknown>).components as Record<string, unknown> | undefined,
     raw,
+    refMemo,
   )
 
   return {
@@ -105,38 +111,61 @@ export async function parseSpec(config: ProjectConfig): Promise<ProjectData> {
 
 // ── $ref 解析 ──
 
-/** 递归解析 $ref（root 随调用传入，避免并行解析时串项目） */
-function resolveRef(obj: unknown, root: OpenApiRoot, depth = 0): unknown {
-  if (depth > 20) return obj
+/** 环检测标记：同一 $ref 递归展开中再次遇到则停止，避免死循环 */
+const REF_VISITING = Symbol('ref-visiting')
+
+/**
+ * 递归解析 $ref（root 随调用传入，避免并行解析时串项目）
+ * memo 按 pointer 缓存已展开结果，同 schema 多处引用只展开一次
+ */
+function resolveRef(
+  obj: unknown,
+  root: OpenApiRoot,
+  depth = 0,
+  memo: Map<string, unknown> = new Map(),
+): unknown {
+  if (depth > 40) return obj
   if (!obj || typeof obj !== 'object') return obj
 
   if (Array.isArray(obj)) {
-    return obj.map((item) => resolveRef(item, root, depth + 1))
+    return obj.map((item) => resolveRef(item, root, depth + 1, memo))
   }
 
   const record = obj as Record<string, unknown>
 
-  // 处理 $ref
   if (record['$ref'] && typeof record['$ref'] === 'string') {
-    const resolved = resolveJsonPointer(record['$ref'], root)
-    if (resolved !== undefined) {
-      return resolveRef(resolved, root, depth + 1)
+    const refStr = record['$ref']
+    if (memo.has(refStr)) {
+      const cached = memo.get(refStr)
+      // 环：返回未展开的 $ref，避免无限递归
+      if (cached === REF_VISITING) return { $ref: refStr }
+      return cached
     }
-    return record
+    memo.set(refStr, REF_VISITING)
+    const resolved = resolveJsonPointer(refStr, root)
+    if (resolved === undefined) {
+      memo.delete(refStr)
+      return record
+    }
+    const expanded = resolveRef(resolved, root, depth + 1, memo)
+    memo.set(refStr, expanded)
+    return expanded
   }
 
-  // 递归处理所有属性
   const result: Record<string, unknown> = {}
   for (const [key, value] of Object.entries(record)) {
-    result[key] = resolveRef(value, root, depth + 1)
+    result[key] = resolveRef(value, root, depth + 1, memo)
   }
   return result
 }
 
-/** 解析 JSON Pointer (#/components/parameters/PageParam) */
+/**
+ * 解析 JSON Pointer（#/components/schemas/Foo~1Bar）
+ * 按 RFC 6901 解码 ~1 → /、~0 → ~
+ */
 function resolveJsonPointer(ref: string, root: OpenApiRoot): unknown {
   if (!ref.startsWith('#/')) return undefined
-  const parts = ref.slice(2).split('/')
+  const parts = ref.slice(2).split('/').map((p) => p.replace(/~1/g, '/').replace(/~0/g, '~'))
   let current: unknown = root
   for (const part of parts) {
     if (current === null || current === undefined || typeof current !== 'object') return undefined
@@ -174,11 +203,15 @@ function isHttpMethod(s: string): s is HttpMethod {
   return ['get', 'post', 'put', 'patch', 'delete', 'head', 'options'].includes(s)
 }
 
-function parseParameters(raw: unknown[], root: OpenApiRoot): ApiParameter[] {
+function parseParameters(
+  raw: unknown[],
+  root: OpenApiRoot,
+  memo: Map<string, unknown>,
+): ApiParameter[] {
   if (!Array.isArray(raw)) return []
   const result: ApiParameter[] = []
   for (const p of raw) {
-    const param = resolveRef(p, root) as Record<string, unknown>
+    const param = resolveRef(p, root, 0, memo) as Record<string, unknown>
     if (!param?.name || !param?.in) continue
     result.push({
       name: param.name as string,
@@ -186,7 +219,7 @@ function parseParameters(raw: unknown[], root: OpenApiRoot): ApiParameter[] {
       description: param.description as string | undefined,
       required: param.required as boolean | undefined,
       deprecated: param.deprecated as boolean | undefined,
-      schema: resolveRef(param.schema, root) as JsonSchema | undefined,
+      schema: resolveRef(param.schema, root, 0, memo) as JsonSchema | undefined,
       example: param.example ?? (param.schema as JsonSchema | undefined)?.example,
     })
   }
@@ -201,15 +234,19 @@ function mergeParameters(pathParams: ApiParameter[], opParams: ApiParameter[]): 
   return [...map.values()]
 }
 
-function parseRequestBody(raw: unknown, root: OpenApiRoot): RequestBody | undefined {
-  const resolved = resolveRef(raw, root) as Record<string, unknown> | undefined
+function parseRequestBody(
+  raw: unknown,
+  root: OpenApiRoot,
+  memo: Map<string, unknown>,
+): RequestBody | undefined {
+  const resolved = resolveRef(raw, root, 0, memo) as Record<string, unknown> | undefined
   if (!resolved) return undefined
   const content: Record<string, { schema?: JsonSchema; example?: unknown }> = {}
   const rawContent = resolved.content as Record<string, Record<string, unknown>> | undefined
   if (rawContent) {
     for (const [mediaType, mediaObj] of Object.entries(rawContent)) {
       content[mediaType] = {
-        schema: resolveRef(mediaObj.schema, root) as JsonSchema | undefined,
+        schema: resolveRef(mediaObj.schema, root, 0, memo) as JsonSchema | undefined,
         example: mediaObj.example,
       }
     }
@@ -224,17 +261,18 @@ function parseRequestBody(raw: unknown, root: OpenApiRoot): RequestBody | undefi
 function parseResponses(
   raw: Record<string, unknown> | undefined,
   root: OpenApiRoot,
+  memo: Map<string, unknown>,
 ): Record<string, ApiResponse> | undefined {
   if (!raw) return undefined
   const result: Record<string, ApiResponse> = {}
   for (const [statusCode, resp] of Object.entries(raw)) {
-    const r = resolveRef(resp, root) as Record<string, unknown>
+    const r = resolveRef(resp, root, 0, memo) as Record<string, unknown>
     const content: Record<string, { schema?: JsonSchema; example?: unknown }> = {}
     const rawContent = r.content as Record<string, Record<string, unknown>> | undefined
     if (rawContent) {
       for (const [mediaType, mediaObj] of Object.entries(rawContent)) {
         content[mediaType] = {
-          schema: resolveRef(mediaObj.schema, root) as JsonSchema | undefined,
+          schema: resolveRef(mediaObj.schema, root, 0, memo) as JsonSchema | undefined,
           example: mediaObj.example,
         }
       }
@@ -251,13 +289,14 @@ function parseResponses(
 function parseSecuritySchemes(
   components: Record<string, unknown> | undefined,
   root: OpenApiRoot,
+  memo: Map<string, unknown>,
 ): SecurityScheme[] {
   if (!components) return []
   const rawSchemes = components.securitySchemes as Record<string, Record<string, unknown>> | undefined
   if (!rawSchemes) return []
   const result: SecurityScheme[] = []
   for (const [name, scheme] of Object.entries(rawSchemes)) {
-    const s = resolveRef(scheme, root) as Record<string, unknown>
+    const s = resolveRef(scheme, root, 0, memo) as Record<string, unknown>
     const type = s.type as string
     if (!type) continue
     const ss: SecurityScheme = { name, type: 'none', description: s.description as string | undefined }

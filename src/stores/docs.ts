@@ -141,12 +141,28 @@ export const useDocsStore = defineStore('docs', () => {
   function restoreForProject(projectId: string) {
     const all = loadPersisted()
     const saved = all[projectId]
-    if (!saved) return
+    if (!saved) {
+      // 无持久化时必须重置，避免沿用上一项目的 envIndex / customBaseUrl
+      activeEnvIndex.value = 0
+      customBaseUrl.value = ''
+      return
+    }
     activeEnvIndex.value = saved.envIndex ?? 0
     customBaseUrl.value = saved.customBaseUrl ?? ''
     envOverrides.value = {
       ...envOverrides.value,
       [projectId]: saved.envs ?? {},
+    }
+    clampEnvIndex(projectId)
+  }
+
+  /** 将 envIndex 钳制到当前项目 environments 范围内（保留 -1 自定义） */
+  function clampEnvIndex(projectId: string) {
+    if (activeEnvIndex.value === -1) return
+    const project = projects.value.find((p) => p.config.id === projectId)
+    const len = project?.config.environments?.length ?? 0
+    if (len === 0 || activeEnvIndex.value < 0 || activeEnvIndex.value >= len) {
+      activeEnvIndex.value = 0
     }
   }
 

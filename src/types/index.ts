@@ -90,7 +90,7 @@ export interface EnvKvRow {
 export interface Environment {
   /** 环境名称 */
   name: string
-  /** 请求前缀，如 http://localhost:3001；空字符串表示同源（走 Vite 代理） */
+  /** 请求前缀；空字符串表示同源（如 Schema Platform 走 /api Vite 代理） */
   baseUrl: string
   /** 默认请求头 */
   headers?: Record<string, string>
@@ -110,13 +110,27 @@ export interface Environment {
   authType?: AuthType
 }
 
+/**
+ * 开发态 Vite 代理：浏览器请求此前缀，dev server 转发到本地后端
+ * environments 中「本地代理」的 baseUrl 应等于 prefix
+ */
+export interface ProjectDevProxy {
+  /** 浏览器侧路径前缀，如 /__proxy/salary-flow */
+  prefix: string
+  /** 后端地址，如 http://localhost:8000 */
+  target: string
+}
+
 /** 项目配置 */
 export interface ProjectConfig {
   /** 唯一标识 */
   id: string
   /** 显示名称 */
   name: string
-  /** OpenAPI spec 来源：本地文件路径或远程 URL */
+  /**
+   * OpenAPI spec 路径（相对 public/，如 specs/xxx.json）
+   * 不支持远程 http(s) URL（浏览器 CORS）
+   */
   specUrl: string
   /** 描述 */
   description?: string
@@ -124,6 +138,8 @@ export interface ProjectConfig {
   version?: string
   /** 测试环境列表 */
   environments?: Environment[]
+  /** 可选：pnpm dev 时按项目转发的代理 */
+  devProxy?: ProjectDevProxy
 }
 
 /** 安全方案（从 OpenAPI securitySchemes / Swagger securityDefinitions 解析） */

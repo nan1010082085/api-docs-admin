@@ -310,11 +310,13 @@
           v-model="cookieValue"
           type="textarea"
           :rows="4"
-          placeholder="key1=value1; key2=value2"
+          placeholder="key1=value1; key2=value2（仅写入 cURL，浏览器 fetch 无法设置 Cookie 头）"
           class="cookie-input"
         />
         <el-checkbox v-model="withCredentials" class="cred-check">携带浏览器 Cookie（credentials: include）</el-checkbox>
-        <p class="field-hint">跨域时手写 Cookie 头可能被浏览器拦截；同源代理下可勾选携带 Cookie。</p>
+        <p class="field-hint">
+          手写 Cookie 仅对「复制 cURL」生效；浏览器试调请勾选上方选项（同源 / 本地代理下有效），跨域仍受 CORS 限制。
+        </p>
       </el-tab-pane>
     </el-tabs>
 
@@ -876,7 +878,7 @@ function fillExample() {
   }
 }
 
-function buildJsonBodyFromForm(): string {
+function buildFormBodyRecord(): Record<string, unknown> {
   const obj: Record<string, unknown> = {}
   for (const field of bodyFields.value) {
     if (!field.enabled) continue
@@ -887,11 +889,24 @@ function buildJsonBodyFromForm(): string {
     if (field.value === '' && !field.required) continue
     obj[field.name] = parseInputBySchema(field.value, field.schema)
   }
-  // 环境固定 Body 字段（同名以表单优先）
   for (const [k, v] of Object.entries(store.getAuthBodyFields())) {
     if (!(k in obj)) obj[k] = coerceEnvBodyValue(v)
   }
-  return JSON.stringify(obj, null, 2)
+  return obj
+}
+
+function buildJsonBodyFromForm(): string {
+  return JSON.stringify(buildFormBodyRecord(), null, 2)
+}
+
+/** 表单字段 → application/x-www-form-urlencoded */
+function buildUrlEncodedBodyFromForm(): string {
+  const params = new URLSearchParams()
+  for (const [k, v] of Object.entries(buildFormBodyRecord())) {
+    if (v === undefined || v === null) continue
+    params.append(k, typeof v === 'object' ? JSON.stringify(v) : String(v))
+  }
+  return params.toString()
 }
 
 /** 环境 Body 字符串尝试按 JSON 字面量解析 */
@@ -942,9 +957,8 @@ function getOutgoingBody(): { body: BodyInit | undefined; headers: Record<string
     if (!has) headers[k] = v
   }
 
-  if (cookieValue.value.trim() && !withCredentials.value) {
-    headers['Cookie'] = cookieValue.value.trim()
-  }
+  // Cookie 头是浏览器禁止头：fetch 无法设置，仅复制 cURL 时附加（见 buildCurlPayload）
+  // 浏览器试调请勾选「携带浏览器 Cookie」
 
   if (bodyMode.value === 'none') {
     return { body: undefined, headers }
@@ -974,6 +988,18 @@ function getOutgoingBody(): { body: BodyInit | undefined; headers: Record<string
     return { body: formData, headers }
   }
 
+  // 表单模式 + urlencoded：真正用 URLSearchParams，而不是 JSON
+  if (
+    bodyMode.value === 'form' &&
+    selectedContentType.value === 'application/x-www-form-urlencoded'
+  ) {
+    const encoded = buildUrlEncodedBodyFromForm()
+    if (!Object.keys(headers).some((h) => h.toLowerCase() === 'content-type')) {
+      headers['Content-Type'] = 'application/x-www-form-urlencoded'
+    }
+    return { body: encoded || undefined, headers }
+  }
+
   let raw = bodyValue.value
   if (bodyMode.value === 'form') {
     raw = buildJsonBodyFromForm()
@@ -990,6 +1016,13 @@ function getOutgoingBody(): { body: BodyInit | undefined; headers: Record<string
         null,
         2,
       )
+    } else if (
+      Object.keys(extras).length &&
+      selectedContentType.value === 'application/x-www-form-urlencoded'
+    ) {
+      const params = new URLSearchParams()
+      for (const [k, v] of Object.entries(extras)) params.append(k, v)
+      raw = params.toString()
     } else {
       return { body: undefined, headers }
     }
@@ -1121,11 +1154,24 @@ function tryAutoSaveToken(text: string, status: number) {
 
 async function copyCurl() {
   const { body, headers } = getOutgoingBody()
+  // 手写 Cookie 仅能出现在 cURL 中（浏览器禁止设置 Cookie 请求头）
+  if (cookieValue.value.trim()) {
+    headers['Cookie'] = cookieValue.value.trim()
+  }
+  let curlBody: string | null = null
+  if (typeof body === 'string') {
+    curlBody = body
+  } else if (bodyMode.value === 'form') {
+    curlBody =
+      selectedContentType.value === 'application/x-www-form-urlencoded'
+        ? buildUrlEncodedBodyFromForm()
+        : buildJsonBodyFromForm()
+  }
   const curl = buildCurlCommand({
     method: props.endpoint.method,
     url: fullUrl.value,
     headers,
-    body: typeof body === 'string' ? body : bodyMode.value === 'form' ? buildJsonBodyFromForm() : null,
+    body: curlBody,
     contentType: selectedContentType.value,
   })
   try {

@@ -315,16 +315,40 @@
 
       <!-- Cookie -->
       <el-tab-pane label="Cookie" name="cookie">
-        <el-input
-          v-model="cookieValue"
-          type="textarea"
-          :rows="4"
-          placeholder="key1=value1; key2=value2（仅写入 cURL，浏览器 fetch 无法设置 Cookie 头）"
-          class="cookie-input"
-        />
+        <div class="cookie-section">
+          <div class="cookie-header">
+            <span>Cookie 键值对</span>
+            <el-button text type="primary" size="small" @click="addCookieRow">+ 添加</el-button>
+          </div>
+          <div class="params-table cookie-table">
+            <div class="params-header">
+              <span class="col-check" />
+              <span class="col-name">名称</span>
+              <span class="col-value">值</span>
+              <span class="col-action" />
+            </div>
+            <div v-if="!cookieRows.length" class="params-empty">暂无 Cookie，可点击添加</div>
+            <div v-for="(row, idx) in cookieRows" :key="row.id" class="params-row">
+              <span class="col-check">
+                <el-checkbox v-model="row.enabled" />
+              </span>
+              <div class="col-name">
+                <el-input v-model="row.name" size="small" placeholder="Cookie 名" />
+              </div>
+              <div class="col-value">
+                <el-input v-model="row.value" size="small" placeholder="值" />
+              </div>
+              <span class="col-action">
+                <el-button circle size="small" @click="cookieRows.splice(idx, 1)">
+                  <AppIcon name="delete" :size="14" />
+                </el-button>
+              </span>
+            </div>
+          </div>
+        </div>
         <el-checkbox v-model="withCredentials" class="cred-check">携带浏览器 Cookie（credentials: include）</el-checkbox>
         <p class="field-hint">
-          手写 Cookie 仅对「复制 cURL」生效；浏览器试调请勾选上方选项（同源 / 本地代理下有效），跨域仍受 CORS 限制。
+          Cookie 仅对「复制 cURL」生效；浏览器试调请勾选上方选项（同源 / 本地代理下有效），跨域仍受 CORS 限制。
         </p>
       </el-tab-pane>
 
@@ -488,6 +512,13 @@ interface HeaderRow {
   value: string
 }
 
+interface CookieRow {
+  id: string
+  enabled: boolean
+  name: string
+  value: string
+}
+
 let rowSeq = 0
 function nextId() {
   rowSeq += 1
@@ -499,12 +530,12 @@ const queryRows = ref<ParamRow[]>([])
 const headerRows = ref<HeaderRow[]>([])
 const bodyFields = ref<BodyField[]>([])
 const formDataFields = ref<FormDataField[]>([])
+const cookieRows = ref<CookieRow[]>([])
 
 const bodyMode = ref<'none' | 'form' | 'raw' | 'formdata'>('none')
 const selectedContentType = ref('application/json')
 const bodyValue = ref('')
 const bodyError = ref('')
-const cookieValue = ref('')
 const withCredentials = ref(false)
 const activeTab = ref('params')
 const respTab = ref('body')
@@ -728,7 +759,22 @@ function syncHeadersFromEnv() {
   }
 
   headerRows.value = rows
-  cookieValue.value = env?.cookie ?? ''
+
+  // 同步 Cookie：将环境配置的 cookie 字符串解析为 cookieRows
+  const cookieStr = env?.cookie ?? ''
+  if (cookieStr) {
+    cookieRows.value = cookieStr.split(';').map((pair) => {
+      const [name, ...rest] = pair.trim().split('=')
+      return {
+        id: nextId(),
+        enabled: true,
+        name: name?.trim() ?? '',
+        value: rest.join('=').trim(),
+      }
+    }).filter((r) => r.name)
+  } else {
+    cookieRows.value = []
+  }
 }
 
 function resetFromEndpoint() {
@@ -796,6 +842,23 @@ function addQueryRow() {
     required: false,
     fromSpec: false,
   })
+}
+
+function addCookieRow() {
+  cookieRows.value.push({
+    id: nextId(),
+    enabled: true,
+    name: '',
+    value: '',
+  })
+}
+
+/** 从 cookieRows 构建 Cookie 字符串 */
+function buildCookieString(): string {
+  return cookieRows.value
+    .filter((r) => r.enabled && r.name.trim())
+    .map((r) => `${r.name.trim()}=${r.value}`)
+    .join('; ')
 }
 
 function isBinarySchema(schema?: JsonSchema): boolean {
@@ -1264,9 +1327,10 @@ function tryAutoSaveToken(text: string, status: number) {
 
 async function copyCurl() {
   const { body, headers } = getOutgoingBody()
-  // 手写 Cookie 仅能出现在 cURL 中（浏览器禁止设置 Cookie 请求头）
-  if (cookieValue.value.trim()) {
-    headers['Cookie'] = cookieValue.value.trim()
+  // Cookie 仅能出现在 cURL 中（浏览器禁止设置 Cookie 请求头）
+  const cookieStr = buildCookieString()
+  if (cookieStr) {
+    headers['Cookie'] = cookieStr
   }
   let curlBody: string | null = null
   if (typeof body === 'string') {
@@ -1660,10 +1724,24 @@ onBeforeUnmount(() => {
   margin-top: 4px;
 }
 
-.cookie-input {
-  :deep(textarea) {
-    font-family: 'SFMono-Regular', Consolas, monospace;
-    font-size: 13px;
+.cookie-section {
+  margin-bottom: 12px;
+}
+
+.cookie-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 14px;
+  font-weight: 600;
+  color: #303133;
+  margin-bottom: 8px;
+}
+
+.cookie-table {
+  .params-header,
+  .params-row {
+    grid-template-columns: 40px 1fr 1.4fr 36px;
   }
 }
 

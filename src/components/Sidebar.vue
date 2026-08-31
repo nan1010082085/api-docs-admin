@@ -67,10 +67,15 @@ function toggleGroup(name: string) {
   expanded[name] = !expanded[name]
 }
 
+/** 切换项目或首次加载时，自动展开所有分组 */
 watch(
-  () => store.filteredGroups,
-  (groups) => {
-    if (groups.length > 0 && Object.keys(expanded).length === 0) {
+  () => [store.activeProjectId, store.filteredGroups],
+  ([, groups]) => {
+    // 清空旧状态，重新展开
+    for (const key of Object.keys(expanded)) {
+      delete expanded[key]
+    }
+    if (Array.isArray(groups)) {
       for (const g of groups) {
         expanded[g.name] = true
       }

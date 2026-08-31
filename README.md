@@ -24,6 +24,30 @@ pnpm dev
 
 开发态代理由 `src/config/projects.ts` 的 `devProxy` + `vite.config.ts` 自动注册；Schema Platform 额外保留 `/api → localhost:3001`。
 
+## 配置说明
+
+### 环境变量
+
+复制 `.env.example` 为 `.env`，填入实际值：
+
+```bash
+cp .env.example .env
+```
+
+### 项目配置
+
+复制示例配置文件：
+
+```bash
+cp src/config/projects.example.ts src/config/projects.ts
+```
+
+编辑 `src/config/projects.ts`，将 `your-domain.com` 替换为实际的服务器域名。
+
+### OpenAPI Spec 文件
+
+将项目的 OpenAPI/Swagger 文件放到 `public/specs/` 目录。
+
 ## 接入新项目
 
 1. 将 OpenAPI / Swagger 文件放到 `public/specs/`（仅支持本地文件，**不支持**浏览器直接拉远程 URL）
@@ -55,15 +79,15 @@ curl -o public/specs/your-api.json http://your-server:3000/openapi.json
 
 ```bash
 pnpm build
-# 产物同步到线上静态目录（示例）
-rsync -avz --delete dist/ ubuntu@pyflow.icu:~/schema-platform/apps/api-docs/
+# 产物同步到线上静态目录
+rsync -avz --delete dist/ user@your-server:~/apps/api-docs/
 ```
 
 Vite `base` 为 `/schema-platform/api-docs/`，nginx 需与之对齐。`alias` + `try_files` 深链易 404，推荐 `root` + SPA fallback，或命名 location：
 
 ```nginx
 location /schema-platform/api-docs/ {
-    alias /home/ubuntu/schema-platform/apps/api-docs/;
+    alias /path/to/apps/api-docs/;
     try_files $uri $uri/ @api_docs_spa;
 }
 
@@ -76,7 +100,7 @@ location @api_docs_spa {
 
 ```nginx
 location /schema-platform/api-docs/ {
-    root /home/ubuntu/schema-platform/apps;
+    root /path/to/apps;
     try_files $uri $uri/ /schema-platform/api-docs/index.html;
 }
 ```

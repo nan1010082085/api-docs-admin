@@ -107,8 +107,13 @@ location /schema-platform/api-docs/ {
 ## 安全说明
 
 - Markdown 与响应体高亮均经 DOMPurify 清洗。
-- **Token / API Key / Cookie 以明文存储在浏览器 localStorage**（键 `api-docs:env-auth`），
-  仅建议在受信任的内部环境使用。
+- **凭证存储（认证对话框 →「存储」）**：
+  - **默认：会话（sessionStorage）**，关闭标签即清除。
+  - 可选：仅内存（刷新丢失） / 本地 localStorage。
+  - 本地模式可开启 **口令 AES-GCM 加密**（PBKDF2 派生密钥）；口令只在当前标签页内存，**永不落盘**。
+  - 旧版明文 `localStorage` 会在首次打开时自动迁移到会话存储。
+  - Hash / MD5 无法还原，不能用于试调，因此未采用。
+- 偏好键：`api-docs:auth-storage-prefs`；数据键：`api-docs:env-auth`。
 
 ## License
 

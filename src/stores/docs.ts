@@ -4,8 +4,21 @@ import type { ApiEndpoint, AuthType, EnvKvRow, Environment, ProjectConfig, Proje
 import { parseSpec } from '@/utils/parser'
 import projectConfigs from '@/config/projects'
 import { buildAuthPayload } from '@/utils/auth'
-
-const STORAGE_KEY = 'api-docs:env-auth'
+import {
+  applyPrefsChange,
+  clearAllAuthData,
+  clearSessionPassphrase,
+  getSessionPassphrase,
+  loadAuthData,
+  loadPrefs,
+  migrateLegacyPlainLocal,
+  saveAuthData,
+  savePrefs,
+  setSessionPassphrase,
+  type AuthPersistMode,
+  type AuthStoragePrefs,
+  type PersistedAuthData,
+} from '@/utils/authStorage'
 
 interface EnvAuthPatch {
   token?: string
@@ -17,28 +30,6 @@ interface EnvAuthPatch {
   queryRows?: EnvKvRow[]
   bodyRows?: EnvKvRow[]
   baseUrl?: string
-}
-
-interface PersistedAuth {
-  [projectId: string]: {
-    envIndex: number
-    customBaseUrl?: string
-    envs: Record<string, EnvAuthPatch>
-  }
-}
-
-function loadPersisted(): PersistedAuth {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY)
-    if (!raw) return {}
-    return JSON.parse(raw) as PersistedAuth
-  } catch {
-    return {}
-  }
-}
-
-function savePersisted(data: PersistedAuth) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(data))
 }
 
 /** 启用中的键值行 → Record */
@@ -61,6 +52,17 @@ export const useDocsStore = defineStore('docs', () => {
   const error = ref<string | null>(null)
   /** 运行时覆盖的环境认证信息（按项目+环境名） */
   const envOverrides = ref<Record<string, Record<string, EnvAuthPatch>>>({})
+
+  /** 凭证存储偏好 */
+  const authPersistMode = ref<AuthPersistMode>('session')
+  const authEncrypt = ref(false)
+  /** 本地加密数据已加载但未解锁 */
+  const authLocked = ref(false)
+  /** 最近一次存储相关提示 */
+  const authStorageMessage = ref<string | null>(null)
+
+  /** 内存中完整快照（含未激活项目），用于切换偏好时不丢数据 */
+  let cachedPersisted: PersistedAuthData = {}
 
   const activeProject = computed(() =>
     projects.value.find((p) => p.config.id === activeProjectId.value),
@@ -114,35 +116,70 @@ export const useDocsStore = defineStore('docs', () => {
 
   const totalEndpoints = computed(() => activeProject.value?.endpoints.length ?? 0)
 
-  /** 当前项目的安全方案列表 */
   const activeSecuritySchemes = computed<SecurityScheme[]>(() => {
     const project = activeProject.value
     if (!project) return []
     return project.securitySchemes ?? []
   })
 
+  const authPersistPrefs = computed<AuthStoragePrefs>(() => ({
+    mode: authPersistMode.value,
+    encrypt: authEncrypt.value,
+  }))
+
+  const hasAuthPassphrase = computed(() => Boolean(getSessionPassphrase()))
+
   function getOverride(envName: string): EnvAuthPatch {
     const pid = activeProjectId.value
     return envOverrides.value[pid]?.[envName] ?? {}
   }
 
-  function persistNow() {
+  function buildSnapshot(): PersistedAuthData {
+    const snap = { ...cachedPersisted }
     const pid = activeProjectId.value
-    if (!pid) return
-    const all = loadPersisted()
-    all[pid] = {
-      envIndex: activeEnvIndex.value,
-      customBaseUrl: customBaseUrl.value,
-      envs: envOverrides.value[pid] ?? {},
+    if (pid) {
+      snap[pid] = {
+        envIndex: activeEnvIndex.value,
+        customBaseUrl: customBaseUrl.value,
+        envs: (envOverrides.value[pid] ?? {}) as Record<string, unknown>,
+      }
     }
-    savePersisted(all)
+    // 同步其它已在内存中的项目 overrides
+    for (const [id, envs] of Object.entries(envOverrides.value)) {
+      if (id === pid) continue
+      snap[id] = {
+        envIndex: snap[id]?.envIndex ?? 0,
+        customBaseUrl: snap[id]?.customBaseUrl ?? '',
+        envs: envs as Record<string, unknown>,
+      }
+    }
+    cachedPersisted = snap
+    return snap
+  }
+
+  /**
+   * 按当前偏好写回存储（加密模式为 async；失败时写入 authStorageMessage）
+   */
+  function persistNow() {
+    if (authLocked.value) return
+    const prefs = authPersistPrefs.value
+    const data = buildSnapshot()
+    void saveAuthData(prefs, data).catch((e: Error) => {
+      authStorageMessage.value = e.message
+      console.warn('[authStorage] persist failed:', e)
+    })
+  }
+
+  function applyLoadedData(data: PersistedAuthData) {
+    cachedPersisted = data
+    for (const [pid, saved] of Object.entries(data)) {
+      envOverrides.value[pid] = (saved.envs ?? {}) as Record<string, EnvAuthPatch>
+    }
   }
 
   function restoreForProject(projectId: string) {
-    const all = loadPersisted()
-    const saved = all[projectId]
+    const saved = cachedPersisted[projectId]
     if (!saved) {
-      // 无持久化时必须重置，避免沿用上一项目的 envIndex / customBaseUrl
       activeEnvIndex.value = 0
       customBaseUrl.value = ''
       return
@@ -151,12 +188,11 @@ export const useDocsStore = defineStore('docs', () => {
     customBaseUrl.value = saved.customBaseUrl ?? ''
     envOverrides.value = {
       ...envOverrides.value,
-      [projectId]: saved.envs ?? {},
+      [projectId]: (saved.envs ?? {}) as Record<string, EnvAuthPatch>,
     }
     clampEnvIndex(projectId)
   }
 
-  /** 将 envIndex 钳制到当前项目 environments 范围内（保留 -1 自定义） */
   function clampEnvIndex(projectId: string) {
     if (activeEnvIndex.value === -1) return
     const project = projects.value.find((p) => p.config.id === projectId)
@@ -167,8 +203,83 @@ export const useDocsStore = defineStore('docs', () => {
   }
 
   /**
-   * 更新当前环境的认证 / Cookie / 自定义字段
+   * 初始化偏好、迁移旧明文、加载凭证
    */
+  async function initAuthStorage() {
+    const migrated = migrateLegacyPlainLocal()
+    if (migrated) {
+      authStorageMessage.value = '已将旧版明文 localStorage 凭证迁移为会话存储（关标签即清除）'
+    }
+
+    const prefs = loadPrefs()
+    authPersistMode.value = prefs.mode
+    authEncrypt.value = prefs.encrypt
+
+    const result = await loadAuthData(prefs)
+    authLocked.value = result.status === 'locked'
+    if (result.status === 'error') {
+      authStorageMessage.value = result.message
+    }
+    if (result.status === 'ok' || result.status === 'empty') {
+      applyLoadedData(result.data)
+    }
+  }
+
+  /**
+   * 用口令解锁本地加密凭证
+   */
+  async function unlockAuth(passphrase: string): Promise<void> {
+    setSessionPassphrase(passphrase)
+    const result = await loadAuthData(authPersistPrefs.value)
+    if (result.status === 'error') {
+      clearSessionPassphrase()
+      throw new Error(result.message)
+    }
+    if (result.status === 'locked') {
+      clearSessionPassphrase()
+      throw new Error('解锁失败')
+    }
+    authLocked.value = false
+    applyLoadedData(result.data)
+    if (activeProjectId.value) restoreForProject(activeProjectId.value)
+  }
+
+  /**
+   * 设置 / 更换会话口令（启用加密时必填；不落盘）
+   */
+  async function setAuthPassphrase(passphrase: string): Promise<void> {
+    if (!passphrase.trim()) throw new Error('口令不能为空')
+    setSessionPassphrase(passphrase.trim())
+    if (authPersistMode.value === 'local' && authEncrypt.value) {
+      await saveAuthData(authPersistPrefs.value, buildSnapshot())
+    }
+  }
+
+  /**
+   * 更新存储偏好并迁移数据
+   */
+  async function updateAuthPersistPrefs(next: AuthStoragePrefs): Promise<void> {
+    const normalized: AuthStoragePrefs = {
+      mode: next.mode,
+      encrypt: next.mode === 'local' ? Boolean(next.encrypt) : false,
+    }
+    await applyPrefsChange(normalized, buildSnapshot())
+    authPersistMode.value = normalized.mode
+    authEncrypt.value = normalized.encrypt
+    authLocked.value = false
+    authStorageMessage.value = null
+  }
+
+  /** 清除全部已存凭证（含密文），保留偏好 */
+  function clearAuthCredentials() {
+    clearAllAuthData()
+    cachedPersisted = {}
+    envOverrides.value = {}
+    authLocked.value = false
+    // 偏好仍在：若仍是 local+encrypt，下次保存需重新设口令
+    savePrefs(authPersistPrefs.value)
+  }
+
   function updateActiveEnv(patch: EnvAuthPatch) {
     const env = activeEnvironment.value
     if (!env) return
@@ -178,7 +289,6 @@ export const useDocsStore = defineStore('docs', () => {
     envOverrides.value[pid][env.name] = {
       ...prev,
       ...patch,
-      // 显式传入时整表替换，避免残留已删行
       headers: patch.headers !== undefined ? patch.headers : prev.headers,
       headerRows: patch.headerRows !== undefined ? patch.headerRows : prev.headerRows,
       queryRows: patch.queryRows !== undefined ? patch.queryRows : prev.queryRows,
@@ -190,19 +300,14 @@ export const useDocsStore = defineStore('docs', () => {
     persistNow()
   }
 
-  /**
-   * 根据当前环境 + 安全方案拼装认证相关请求头
-   */
   function getAuthHeaders(): Record<string, string> {
     return buildAuthPayload(activeEnvironment.value, activeSecuritySchemes.value).headers
   }
 
-  /** 环境级固定 Query + apiKey(query) */
   function getAuthQuery(): Record<string, string> {
     return buildAuthPayload(activeEnvironment.value, activeSecuritySchemes.value).queryParams
   }
 
-  /** 环境级固定 Body 字段 */
   function getAuthBodyFields(): Record<string, string> {
     return rowsToRecord(activeEnvironment.value?.bodyRows)
   }
@@ -211,6 +316,8 @@ export const useDocsStore = defineStore('docs', () => {
     loading.value = true
     error.value = null
     try {
+      await initAuthStorage()
+
       const results = await Promise.allSettled(projectConfigs.map((c) => loadProject(c)))
       projects.value = results
         .filter((r): r is PromiseFulfilledResult<ProjectData> => r.status === 'fulfilled')
@@ -249,9 +356,12 @@ export const useDocsStore = defineStore('docs', () => {
   }
 
   function setActiveProject(id: string) {
+    // 先把当前项目写入快照，再切换
+    buildSnapshot()
     activeProjectId.value = id
     searchQuery.value = ''
     restoreForProject(id)
+    persistNow()
   }
 
   function setSearch(query: string) {
@@ -283,6 +393,11 @@ export const useDocsStore = defineStore('docs', () => {
     activeSecuritySchemes,
     loading,
     error,
+    authPersistMode,
+    authEncrypt,
+    authLocked,
+    authStorageMessage,
+    hasAuthPassphrase,
     loadAllProjects,
     setActiveProject,
     setSearch,
@@ -293,5 +408,9 @@ export const useDocsStore = defineStore('docs', () => {
     getAuthBodyFields,
     findEndpoint,
     persistNow,
+    unlockAuth,
+    setAuthPassphrase,
+    updateAuthPersistPrefs,
+    clearAuthCredentials,
   }
 })

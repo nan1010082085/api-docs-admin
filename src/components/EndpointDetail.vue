@@ -124,6 +124,7 @@ import { ref, computed } from 'vue'
 import AppIcon from '@/components/AppIcon.vue'
 import type { ApiEndpoint } from '@/types'
 import { renderMarkdown } from '@/utils/markdown'
+import { resolveDefaultRequestTab } from '@/utils/endpointTab'
 import { useDocsStore } from '@/stores/docs'
 import MethodBadge from './MethodBadge.vue'
 import ParamTable from './ParamTable.vue'
@@ -137,7 +138,7 @@ const props = defineProps<{
 
 const store = useDocsStore()
 
-const activeTab = ref('params')
+const activeTab = ref(resolveDefaultRequestTab(props.endpoint))
 const viewMode = ref<'split' | 'test'>('split')
 
 const pathParams = computed(() =>

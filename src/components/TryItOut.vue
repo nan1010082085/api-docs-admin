@@ -394,6 +394,7 @@ import { highlightCode, langFromContentType, tryFormatJson } from '@/utils/highl
 import { getHistory, addHistory, clearHistory } from '@/utils/history'
 import type { HistoryEntry } from '@/utils/history'
 import { performFetch } from '@/utils/request'
+import { resolveDefaultRequestTab } from '@/utils/endpointTab'
 import type { ApiEndpoint, ApiParameter, JsonSchema, TryResponse } from '@/types'
 
 const props = defineProps<{
@@ -747,7 +748,7 @@ function resetFromEndpoint() {
 
   localBaseUrl.value = store.activeEnvironment?.baseUrl ?? ''
   syncHeadersFromEnv()
-  activeTab.value = 'params'
+  activeTab.value = resolveDefaultRequestTab(props.endpoint)
   loadHistory()
 }
 

@@ -1217,6 +1217,9 @@ async function sendRequest() {
       credentials: withCredentials.value ? 'include' : 'same-origin',
     })
 
+    // 自动切换到响应页签
+    activeTab.value = 'response'
+
     // 登录成功时尝试回写 token（仅 2xx）
     tryAutoSaveToken(response.value.body, response.value.status)
 

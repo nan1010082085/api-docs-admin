@@ -5,8 +5,7 @@
       <span>在线测试</span>
       <div class="try-actions">
         <el-button size="small" @click="copyCurl">
-          <AppIcon name="document-copy" :size="14" style="margin-right: 4px" />
-          复制 cURL
+          <AppIcon name="document-copy" :size="14" />
         </el-button>
       </div>
     </div>
@@ -146,8 +145,7 @@
             </el-select>
             <el-button size="small" @click="fillExample">填入示例</el-button>
             <el-button size="small" @click="copyRequestBody">
-              <AppIcon name="document-copy" :size="14" style="margin-right: 4px" />
-              复制
+              <AppIcon name="document-copy" :size="14" />
             </el-button>
           </template>
         </div>
@@ -350,7 +348,9 @@
           <el-tabs v-model="respTab" class="resp-tabs" size="small">
             <el-tab-pane label="响应体" name="body">
               <div class="resp-toolbar">
-                <el-button size="small" @click="copyResponse">复制</el-button>
+                <el-button size="small" @click="copyResponse">
+                  <AppIcon name="document-copy" :size="14" />
+                </el-button>
                 <el-button size="small" @click="extractTokenFromResponse">提取 Token</el-button>
                 <el-input
                   v-model="tokenFieldConfig"

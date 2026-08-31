@@ -7,6 +7,8 @@
     "bundle": "node scripts/bundle-spec.mjs",
     "sync:openapi": "node scripts/sync-from-server.mjs",
     "check:coverage": "pnpm bundle && node scripts/check-coverage.mjs",
+    "verify": "node scripts/verify-round.mjs",
+    "verify:10": "node -e \"for(let i=1;i<=10;i++){const r=require('child_process').spawnSync('node',['scripts/verify-round.mjs',String(i)],{stdio:'inherit'});if(r.status)process.exit(r.status)}\"",
     "dev": "pnpm bundle && vite",
     "build": "pnpm bundle && vue-tsc -b && vite build",
     "preview": "vite preview"
